@@ -32,6 +32,11 @@ export class HumanController {
     return this.humanService.softDelete(+id);
   }
 
+  @Patch('recover/:id')
+  recover(@Param('id') id: string) {
+    return this.humanService.recover(+id);
+  }
+
   @Delete('hard/:id')
   hardRemove(@Param('id') id: string) {
     return this.humanService.hardDelete(+id);

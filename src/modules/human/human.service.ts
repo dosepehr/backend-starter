@@ -3,7 +3,7 @@ import { CreateHumanDto } from './dto/create-human.dto';
 import { UpdateHumanDto } from './dto/update-human.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Human } from './entities/human.entity';
-import { Repository } from 'typeorm';
+import { FindOneOptions, Repository } from 'typeorm';
 import { SuccessResponse } from 'utils/interfaces/api-responses.interface';
 
 @Injectable()
@@ -33,8 +33,11 @@ export class HumanService {
     };
   }
 
-  async findOne(id: number) {
-    const human = await this.humanRepository.findOne({ where: { id } });
+  async findOne(id: number, options?: FindOneOptions<Human>) {
+    const human = await this.humanRepository.findOne({
+      where: { id },
+      ...options,
+    });
     if (!human) {
       throw new NotFoundException(`Human with ID ${id} not found`);
     }
@@ -62,13 +65,32 @@ export class HumanService {
   }
 
   async softDelete(id: number): Promise<SuccessResponse<void>> {
-    const { data: humanToRemove } = await this.findOne(id); 
-    
+    const { data: humanToRemove } = await this.findOne(id);
+
     await this.humanRepository.softRemove(humanToRemove);
 
     return {
       status: true,
       message: `Human with ID ${id} soft deleted successfully`,
+    };
+  }
+
+  async recover(id: number): Promise<SuccessResponse<void>> {
+    const { data: human } = await this.findOne(id, { withDeleted: true });
+
+    if (!human.deletedAt) {
+      throw new NotFoundException(
+        `Human with ID ${id} is not deleted and cannot be recovered.`,
+      );
+    }
+    human.deletedAt = null;
+    human.recoveredAt = new Date();
+
+    await this.humanRepository.save(human);
+
+    return {
+      status: true,
+      message: `Human with ID ${id} recovered successfully`,
     };
   }
 
@@ -86,5 +108,4 @@ export class HumanService {
       message: `Human with ID ${id} hard deleted successfully`,
     };
   }
-
 }
