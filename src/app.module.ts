@@ -4,6 +4,7 @@ import { AppService } from './app.service';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { dbConfig } from 'config/db.config';
+import { HumanModule } from './modules/human/human.module';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { dbConfig } from 'config/db.config';
       envFilePath: '.env',
     }),
     TypeOrmModule.forRoot(dbConfig),
+    HumanModule,
   ],
   controllers: [AppController],
   providers: [AppService],
