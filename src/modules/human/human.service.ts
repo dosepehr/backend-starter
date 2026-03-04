@@ -20,7 +20,7 @@ export class HumanService {
     await this.humanRepository.save(human);
     return {
       status: true,
-      message: 'human is created',
+      message: 'Human is created',
       data: human,
     };
   }
@@ -49,11 +49,26 @@ export class HumanService {
     };
   }
 
-  update(id: number, updateHumanDto: UpdateHumanDto) {
-    return `This action updates a #${id} human`;
+  async update(
+    id: number,
+    updateHumanDto: UpdateHumanDto,
+  ): Promise<SuccessResponse<Human>> {
+    const humanData = this.findOne(id);
+    const human = (await humanData).data;
+    Object.assign(human, updateHumanDto);
+    await this.humanRepository.save(human);
+
+    return {
+      status: true,
+      message: 'Human updated successfully',
+      data: human,
+    };
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} human`;
+  softDelete(id: number) {
+    return `This action soft deletes a #${id} human`;
+  }
+  hardDelete(id: number) {
+    return `This action hard deletes a #${id} human`;
   }
 }
