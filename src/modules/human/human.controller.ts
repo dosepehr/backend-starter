@@ -28,7 +28,12 @@ export class HumanController {
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.humanService.remove(+id);
+  softRemove(@Param('id') id: string) {
+    return this.humanService.softDelete(+id);
+  }
+
+  @Delete('hard/:id')
+  hardRemove(@Param('id') id: string) {
+    return this.humanService.hardDelete(+id);
   }
 }

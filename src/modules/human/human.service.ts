@@ -12,11 +12,11 @@ export class HumanService {
     @InjectRepository(Human)
     private readonly humanRepository: Repository<Human>,
   ) {}
+
   async create(
     createHumanDto: CreateHumanDto,
   ): Promise<SuccessResponse<Human>> {
     const human = this.humanRepository.create(createHumanDto);
-
     await this.humanRepository.save(human);
     return {
       status: true,
@@ -34,13 +34,9 @@ export class HumanService {
   }
 
   async findOne(id: number) {
-    const human = await this.humanRepository.findOne({
-      where: {
-        id,
-      },
-    });
+    const human = await this.humanRepository.findOne({ where: { id } });
     if (!human) {
-      throw new NotFoundException();
+      throw new NotFoundException(`Human with ID ${id} not found`);
     }
 
     return {
@@ -53,22 +49,42 @@ export class HumanService {
     id: number,
     updateHumanDto: UpdateHumanDto,
   ): Promise<SuccessResponse<Human>> {
-    const humanData = this.findOne(id);
-    const human = (await humanData).data;
-    Object.assign(human, updateHumanDto);
-    await this.humanRepository.save(human);
+    const { data: human } = await this.findOne(id);
+
+    this.humanRepository.merge(human, updateHumanDto);
+    const updatedHuman = await this.humanRepository.save(human);
 
     return {
       status: true,
       message: 'Human updated successfully',
-      data: human,
+      data: updatedHuman,
     };
   }
 
-  softDelete(id: number) {
-    return `This action soft deletes a #${id} human`;
+  async softDelete(id: number): Promise<SuccessResponse<void>> {
+    const { data: humanToRemove } = await this.findOne(id); 
+    
+    await this.humanRepository.softRemove(humanToRemove);
+
+    return {
+      status: true,
+      message: `Human with ID ${id} soft deleted successfully`,
+    };
   }
-  hardDelete(id: number) {
-    return `This action hard deletes a #${id} human`;
+
+  async hardDelete(id: number): Promise<SuccessResponse<void>> {
+    const result = await this.humanRepository.delete(id);
+
+    if (result.affected === 0) {
+      throw new NotFoundException(
+        `Human with ID ${id} not found for hard delete`,
+      );
+    }
+
+    return {
+      status: true,
+      message: `Human with ID ${id} hard deleted successfully`,
+    };
   }
+
 }
