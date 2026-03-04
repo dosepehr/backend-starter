@@ -6,7 +6,7 @@ export class AppService {
   getHello(): SuccessResponse {
     return {
       status: true,
-      message: 'Welcome to Task manager API',
+      message: 'Welcome to Nest Starter',
     };
   }
   }
