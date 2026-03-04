@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateHumanDto } from './dto/create-human.dto';
 import { UpdateHumanDto } from './dto/update-human.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -25,12 +25,28 @@ export class HumanService {
     };
   }
 
-  findAll() {
-    return `This action returns all human`;
+  async findAll(): Promise<SuccessResponse<Human[]>> {
+    const humans = await this.humanRepository.find();
+    return {
+      status: true,
+      data: humans,
+    };
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} human`;
+  async findOne(id: number) {
+    const human = await this.humanRepository.findOne({
+      where: {
+        id,
+      },
+    });
+    if (!human) {
+      throw new NotFoundException();
+    }
+
+    return {
+      status: true,
+      data: human,
+    };
   }
 
   update(id: number, updateHumanDto: UpdateHumanDto) {
