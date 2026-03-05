@@ -5,12 +5,22 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Human } from './entities/human.entity';
 import { FindOneOptions, Repository } from 'typeorm';
 import { SuccessResponse } from 'utils/interfaces/api-responses.interface';
+import { FilterService } from 'utils/services/filter/filter.service';
+import { FilterableField } from 'utils/interfaces/filterable-field.interface';
+
+const HUMAN_FILTERABLE_FIELDS: FilterableField<Human>[] = [
+  { field: 'name', type: 'string' },
+  { field: 'age', type: 'number' },
+  { field: 'deletedAt', type: 'boolean', nullable: true },
+  { field: 'recoveredAt', type: 'boolean', nullable: true },
+];
 
 @Injectable()
 export class HumanService {
   constructor(
     @InjectRepository(Human)
     private readonly humanRepository: Repository<Human>,
+    private readonly filterService: FilterService,
   ) {}
 
   async create(
@@ -25,14 +35,20 @@ export class HumanService {
     };
   }
 
-  async findAll(): Promise<SuccessResponse<Human[]>> {
-    const humans = await this.humanRepository.find();
+  async findAll(
+    query: Record<string, string>,
+  ): Promise<SuccessResponse<Human[]>> {
+    const options = this.filterService.buildQuery<Human>(
+      query,
+      HUMAN_FILTERABLE_FIELDS,
+    );
+
+    const humans = await this.humanRepository.find(options);
     return {
       status: true,
       data: humans,
     };
   }
-
   async findOne(id: number, options?: FindOneOptions<Human>) {
     const human = await this.humanRepository.findOne({
       where: { id },

@@ -3,9 +3,10 @@ import { HumanService } from './human.service';
 import { HumanController } from './human.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Human } from './entities/human.entity';
+import { FilterModule } from 'utils/services/filter/filter.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Human])],
+  imports: [TypeOrmModule.forFeature([Human]), FilterModule],
   controllers: [HumanController],
   providers: [HumanService],
 })
