@@ -3,7 +3,7 @@ import { AppModule } from './app.module';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { SwaggerModule } from '@nestjs/swagger';
 import { swaggerConfig } from 'config/swagger.config';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { ResponseInterceptor } from 'utils/interceptors/response.interceptor';
 import { HttpExceptionFilter } from 'utils/filters/http-exception.filter';
 
@@ -20,6 +20,13 @@ async function bootstrap() {
   const reflector = app.get(Reflector);
   app.useGlobalInterceptors(new ResponseInterceptor(reflector));
   app.useGlobalFilters(new HttpExceptionFilter());
+
+  app.enableVersioning({
+    type: VersioningType.URI,
+    defaultVersion: '1',
+  });
+
+  app.setGlobalPrefix('api');
   // swagger config
   const documentFactory = () =>
     SwaggerModule.createDocument(app, swaggerConfig);
