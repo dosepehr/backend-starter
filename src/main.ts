@@ -9,7 +9,13 @@ import { ValidationFilter } from 'utils/filters/validation.filter';
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-  app.useGlobalPipes(new ValidationPipe());
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true, // ignores unused fields
+      forbidNonWhitelisted: false, // returns error for unused fields
+      transform: true,
+    }),
+  );
   app.useGlobalFilters(new ValidationFilter());
 
   // swagger config
