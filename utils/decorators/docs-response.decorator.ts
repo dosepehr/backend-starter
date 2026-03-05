@@ -1,4 +1,3 @@
-// src/utils/decorators/api-response.decorator.ts
 import { applyDecorators, Type } from '@nestjs/common';
 import { ApiExtraModels, ApiOkResponse, getSchemaPath } from '@nestjs/swagger';
 import { ResponseMessage } from './response-message.decorator';

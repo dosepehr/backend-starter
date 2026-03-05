@@ -27,7 +27,7 @@ export class ResponseInterceptor<T> implements NestInterceptor<
 
     return next.handle().pipe(
       map((response) => {
-        // of it is already formatted
+        // if it is already formatted
         if (
           response !== null &&
           typeof response === 'object' &&
