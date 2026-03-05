@@ -9,6 +9,7 @@ import { FilterService } from 'utils/common/filter/filter.service';
 import { FilterableField } from 'utils/interfaces/filterable-field.interface';
 import { PaginationService } from 'utils/common/pagination/pagination.service';
 import { PaginationDto } from 'utils/common/pagination/pagination.dto';
+import { OrderingService } from 'utils/common/ordering/ordering.service';
 
 const HUMAN_FILTERABLE_FIELDS: FilterableField<Human>[] = [
   { field: 'name', type: 'string' },
@@ -18,6 +19,7 @@ const HUMAN_FILTERABLE_FIELDS: FilterableField<Human>[] = [
   { field: 'createdAt', type: 'date' },
   { field: 'updatedAt', type: 'date' },
 ];
+const HUMAN_ORDERABLE_FIELDS = ['name', 'age', 'createdAt'];
 
 @Injectable()
 export class HumanService {
@@ -26,6 +28,7 @@ export class HumanService {
     private readonly humanRepository: Repository<Human>,
     private readonly filterService: FilterService,
     private readonly paginationService: PaginationService,
+    private readonly orderingService: OrderingService,
   ) {}
 
   async create(
@@ -48,11 +51,17 @@ export class HumanService {
       query,
       HUMAN_FILTERABLE_FIELDS,
     );
-
+    const order = this.orderingService.buildOrder<Human>(
+      query.ordering,
+      HUMAN_ORDERABLE_FIELDS,
+    );
     return this.paginationService.paginate(
       this.humanRepository,
       paginationDto,
-      filterOptions,
+      {
+        ...filterOptions,
+        order,
+      },
     );
   }
 
