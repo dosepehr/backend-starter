@@ -15,11 +15,11 @@ import { UpdateHumanDto } from './dto/update-human.dto';
 import { PaginationDto } from 'utils/common/pagination/pagination.dto';
 import { ApiTags } from '@nestjs/swagger';
 import { Human } from './entities/human.entity';
-import { ApiPaginated } from 'utils/decorators/api-paginated.decorator';
+import { ApiPaginated } from 'utils/decorators/docs-paginated.decorator';
 import {
   DocsResponse,
   DocsResponseNull,
-} from 'utils/decorators/api-response.decorator';
+} from 'utils/decorators/docs-response.decorator';
 import { DocsErrors } from 'utils/decorators/docs-errors.decorator';
 
 @ApiTags('Human')
