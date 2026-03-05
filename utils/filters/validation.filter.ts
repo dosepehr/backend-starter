@@ -1,12 +1,12 @@
-import { ExceptionFilter, Catch } from '@nestjs/common';
-import { HttpException, ExecutionContext } from '@nestjs/common';
+import {
+  Catch,
+  ExceptionFilter,
+  HttpException,
+  ArgumentsHost,
+  HttpStatus,
+} from '@nestjs/common';
+import { Response } from 'express';
 import { ValidationError } from 'class-validator';
-
-interface ValidationExceptionResponse {
-  statusCode: number;
-  message: (string | ValidationError)[];
-  error: string;
-}
 
 interface CustomExceptionResponse {
   status: boolean;
@@ -16,76 +16,84 @@ interface CustomExceptionResponse {
 }
 
 @Catch(HttpException)
-export class ValidationFilter<TException extends HttpException | object> implements ExceptionFilter {
-  catch(exception: TException, host: ExecutionContext) {
+export class ValidationFilter implements ExceptionFilter {
+  catch(exception: HttpException, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
-    const response = ctx.getResponse();
-    
-    let httpException: HttpException;
-    let statusCode: number;
-    let exceptionResponse: any;
-    let customResponse!: CustomExceptionResponse;
+    const response = ctx.getResponse<Response>();
 
-    if (exception instanceof HttpException) {
-      httpException = exception;
-    } else {
-      httpException = new HttpException('Internal Server Error', 500);
+    const statusCode = exception.getStatus();
+    const exceptionResponse = exception.getResponse();
+
+    const { error, messages } = this.parseExceptionResponse(
+      exception,
+      exceptionResponse,
+    );
+
+    const payload: CustomExceptionResponse = {
+      status: false,
+      error,
+      statusCode,
+      messages,
+    };
+
+    response.status(statusCode).json(payload);
+  }
+
+
+  private parseExceptionResponse(
+    exception: HttpException,
+    exceptionResponse: string | object,
+  ): { error: string; messages: string[] } {
+    const defaultError = this.resolveDefaultError(exception.getStatus());
+
+    if (typeof exceptionResponse === 'string') {
+      return { error: defaultError, messages: [exceptionResponse] };
     }
 
-    statusCode = httpException.getStatus();
-    exceptionResponse = httpException.getResponse();
-    
-    if (statusCode === 400 && typeof exceptionResponse === 'object' && 'message' in exceptionResponse) {
-      const validationResponse = exceptionResponse as ValidationExceptionResponse;
-      let allErrorStrings: string[] = [];
+    const res = exceptionResponse as Record<string, any>;
+    const error: string = res.error ?? defaultError;
+    const messages = this.extractMessages(res.message);
 
-      validationResponse.message.forEach((msgItem) => {
-        if (typeof msgItem === 'string') {
-          allErrorStrings.push(msgItem);
-        } else if (typeof msgItem === 'object' && msgItem !== null && msgItem.constraints) {
-          Object.values(msgItem.constraints).forEach(constraintError => {
-            allErrorStrings.push(constraintError);
-          });
-        } else if (typeof msgItem === 'object' && msgItem !== null && 'property' in msgItem) {
-             allErrorStrings.push(`Validation failed for property: ${msgItem.property}`);
-        }
+    return {
+      error,
+      messages: messages.length > 0 ? messages : ['Operation failed'],
+    };
+  }
+
+  private extractMessages(message: unknown): string[] {
+    if (!message) return [];
+
+    if (typeof message === 'string') return [message];
+
+    if (Array.isArray(message)) {
+      return message.flatMap((item: string | ValidationError) => {
+        if (typeof item === 'string') return [item];
+        return this.extractValidationErrorMessages(item);
       });
-      
-      const finalMessages = allErrorStrings.length > 0 
-        ? allErrorStrings 
-        : [typeof validationResponse.message === 'string' 
-              ? validationResponse.message 
-              : 'Validation failed.'];
-
-      customResponse = {
-        status: false,
-        error: validationResponse.error || 'Bad Request',
-        statusCode: statusCode,
-        messages: finalMessages as string[],
-      };
-
-    } else {
-      let messageToSend: string[];
-      
-      if (typeof exceptionResponse === 'string') {
-          messageToSend = [exceptionResponse];
-      } else if (typeof exceptionResponse === 'object' && exceptionResponse !== null && 'message' in exceptionResponse) {
-          const msg = exceptionResponse.message;
-          messageToSend = Array.isArray(msg) 
-            ? msg.filter(m => typeof m === 'string')
-            : [String(msg)];
-      } else {
-          messageToSend = ['Operation failed.'];
-      }
-
-      customResponse = {
-        status: false,
-        error: (exceptionResponse as any).error || httpException.name,
-        statusCode: statusCode,
-        messages: messageToSend,
-      };
     }
-    
-    response.status(customResponse.statusCode).json(customResponse);
+
+    return [];
+  }
+
+  private extractValidationErrorMessages(error: ValidationError): string[] {
+    const messages: string[] = [];
+
+    if (error.constraints) {
+      messages.push(...Object.values(error.constraints));
+    } else if (error.property) {
+      messages.push(`Validation failed for property: ${error.property}`);
+    }
+
+    if (error.children?.length) {
+      error.children.forEach((child) => {
+        messages.push(...this.extractValidationErrorMessages(child));
+      });
+    }
+
+    return messages;
+  }
+
+  private resolveDefaultError(statusCode: number): string {
+    return HttpStatus[statusCode] ?? 'Internal Server Error';
   }
 }
