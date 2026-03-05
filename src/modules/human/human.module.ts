@@ -6,6 +6,7 @@ import { Human } from './entities/human.entity';
 import { FilterModule } from 'utils/common/filtering/filter.module';
 import { PaginationModule } from 'utils/common/pagination/pagination.module';
 import { OrderingModule } from 'utils/common/ordering/ordering.module';
+import { SearchModule } from 'utils/common/searching/search.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { OrderingModule } from 'utils/common/ordering/ordering.module';
     PaginationModule,
     FilterModule,
     OrderingModule,
+    SearchModule,
   ],
   controllers: [HumanController],
   providers: [HumanService],

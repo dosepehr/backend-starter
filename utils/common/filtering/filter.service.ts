@@ -1,16 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import {
-  FindManyOptions,
-  IsNull,
-  Not,
-  Like,
-  ILike,
   Between,
+  FindOptionsWhere,
+  ILike,
   In,
-  MoreThanOrEqual,
-  LessThanOrEqual,
-  MoreThan,
+  IsNull,
   LessThan,
+  LessThanOrEqual,
+  Like,
+  MoreThan,
+  MoreThanOrEqual,
+  Not,
+  ObjectLiteral,
 } from 'typeorm';
 import { FilterableField } from '../../interfaces/filterable-field.interface';
 
@@ -39,8 +40,14 @@ const OPERATORS: Operator[] = [
   '$between',
 ];
 
+export interface FilterResult<T extends ObjectLiteral> {
+  where: FindOptionsWhere<T> | undefined;
+  withDeleted: boolean;
+}
+
 @Injectable()
 export class FilterService {
+
   private parseValue(
     value: string,
     type: FilterableField<any>['type'],
@@ -51,17 +58,11 @@ export class FilterService {
         const isDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(value.trim());
 
         if (isDateOnly) {
-          if (position === 'end') {
-            const date = new Date(`${value}T23:59:59.999Z`);
-            if (isNaN(date.getTime()))
-              throw new Error(`Invalid date: ${value}`);
-            return date;
-          } else {
-            const date = new Date(`${value}T00:00:00.000Z`);
-            if (isNaN(date.getTime()))
-              throw new Error(`Invalid date: ${value}`);
-            return date;
-          }
+          const suffix =
+            position === 'end' ? 'T23:59:59.999Z' : 'T00:00:00.000Z';
+          const date = new Date(`${value}${suffix}`);
+          if (isNaN(date.getTime())) throw new Error(`Invalid date: ${value}`);
+          return date;
         }
 
         const date = new Date(value);
@@ -114,23 +115,33 @@ export class FilterService {
         return LessThan(this.parseValue(value, type));
 
       case '$in':
-        return In(value.split(',').map((v) => this.parseValue(v.trim(), type)));
+        return In(
+          value.split(',').map((v) => this.parseValue(v.trim(), type)),
+        );
 
       case '$between': {
         const parts = value.split(',');
         if (parts.length !== 2)
           throw new Error(`$between requires exactly 2 values`);
 
-        const min = this.parseValue(parts[0].trim(), type, 'start');
-        const max = this.parseValue(parts[1].trim(), type, 'end');
-
-        return Between(min, max);
+        return Between(
+          this.parseValue(parts[0].trim(), type, 'start'),
+          this.parseValue(parts[1].trim(), type, 'end'),
+        );
       }
 
       case '$eq':
       default:
         return this.parseValue(value, type);
     }
+  }
+
+  private transformNullableValue(
+    rawValue: string,
+  ): 'isNull' | 'notNull' | undefined {
+    if (rawValue === 'true') return 'notNull';
+    if (rawValue === 'false') return 'isNull';
+    return undefined;
   }
 
   private transformValue(
@@ -159,10 +170,11 @@ export class FilterService {
     }
   }
 
-  buildQuery<T>(
+
+  buildQuery<T extends ObjectLiteral>(
     query: Record<string, string>,
     allowedFields: FilterableField<T>[],
-  ): FindManyOptions<T> {
+  ): FilterResult<T> {
     const where: Record<string, any> = {};
     let withDeleted = false;
 
@@ -194,13 +206,14 @@ export class FilterService {
       if (rawValue === undefined) continue;
 
       if (fieldMeta.nullable) {
-        const boolValue = this.transformValue(rawValue, 'boolean');
-        if (boolValue === undefined) continue;
+        const nullableResult = this.transformNullableValue(rawValue);
+        if (nullableResult === undefined) continue;
 
-        where[fieldName] = boolValue ? Not(IsNull()) : IsNull();
-
-        if (fieldName === 'deletedAt' && boolValue === true) {
-          withDeleted = true;
+        if (nullableResult === 'notNull') {
+          where[fieldName] = Not(IsNull());
+          if (fieldName === 'deletedAt') withDeleted = true;
+        } else {
+          where[fieldName] = IsNull();
         }
         continue;
       }
@@ -211,6 +224,11 @@ export class FilterService {
       }
     }
 
-    return { where: where as any, withDeleted };
+    const hasConditions = Object.keys(where).length > 0;
+
+    return {
+      where: hasConditions ? (where as FindOptionsWhere<T>) : undefined,
+      withDeleted,
+    };
   }
 }

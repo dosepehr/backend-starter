@@ -10,6 +10,7 @@ import { FilterableField } from 'utils/interfaces/filterable-field.interface';
 import { PaginationService } from 'utils/common/pagination/pagination.service';
 import { PaginationDto } from 'utils/common/pagination/pagination.dto';
 import { OrderingService } from 'utils/common/ordering/ordering.service';
+import { SearchService } from 'utils/common/searching/search.service';
 
 const HUMAN_FILTERABLE_FIELDS: FilterableField<Human>[] = [
   { field: 'name', type: 'string' },
@@ -20,6 +21,7 @@ const HUMAN_FILTERABLE_FIELDS: FilterableField<Human>[] = [
   { field: 'updatedAt', type: 'date' },
 ];
 const HUMAN_ORDERABLE_FIELDS = ['name', 'age', 'createdAt'];
+const HUMAN_SEARCHABLE_FIELDS = ['name', 'age'];
 
 @Injectable()
 export class HumanService {
@@ -29,6 +31,7 @@ export class HumanService {
     private readonly filterService: FilterService,
     private readonly paginationService: PaginationService,
     private readonly orderingService: OrderingService,
+    private readonly searchService: SearchService,
   ) {}
 
   async create(
@@ -43,28 +46,27 @@ export class HumanService {
     };
   }
 
-  async findAll(
-    query: Record<string, string>,
-    paginationDto: PaginationDto,
-  ): Promise<SuccessResponse<Human[]>> {
-    const filterOptions = this.filterService.buildQuery(
-      query,
-      HUMAN_FILTERABLE_FIELDS,
+  async findAll(query: Record<string, string>, paginationDto: PaginationDto) {
+    const { where: filterWhere, withDeleted } =
+      this.filterService.buildQuery<Human>(query, HUMAN_FILTERABLE_FIELDS);
+
+    const where = this.searchService.buildSearch<Human>(
+      query.search,
+      HUMAN_SEARCHABLE_FIELDS,
+      filterWhere,
     );
+
     const order = this.orderingService.buildOrder<Human>(
       query.ordering,
       HUMAN_ORDERABLE_FIELDS,
     );
+
     return this.paginationService.paginate(
       this.humanRepository,
       paginationDto,
-      {
-        ...filterOptions,
-        order,
-      },
+      { where, order, withDeleted },
     );
   }
-
   async findOne(id: number, options?: FindOneOptions<Human>) {
     const human = await this.humanRepository.findOne({
       where: { id },
