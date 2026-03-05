@@ -6,3 +6,9 @@ export interface SuccessResponse<T = undefined> {
   data?: T;
   meta?: PaginationMeta;
 }
+
+export interface ErrorResponse {
+  status: false;
+  message: string;
+  errors?: Record<string, string[]>;
+}

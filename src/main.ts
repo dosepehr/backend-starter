@@ -4,7 +4,8 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { SwaggerModule } from '@nestjs/swagger';
 import { swaggerConfig } from 'config/swagger.config';
 import { ValidationPipe } from '@nestjs/common';
-import { ValidationFilter } from 'utils/filters/validation.filter';
+import { ResponseInterceptor } from 'utils/interceptors/response.interceptor';
+import { HttpExceptionFilter } from 'utils/filters/http-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -16,8 +17,8 @@ async function bootstrap() {
       transform: true,
     }),
   );
-  app.useGlobalFilters(new ValidationFilter());
-
+  app.useGlobalInterceptors(new ResponseInterceptor());
+  app.useGlobalFilters(new HttpExceptionFilter());
   // swagger config
   const documentFactory = () =>
     SwaggerModule.createDocument(app, swaggerConfig);

@@ -76,17 +76,14 @@ export class HumanService {
       throw new NotFoundException(`Human with ID ${id} not found`);
     }
 
-    return {
-      status: true,
-      data: human,
-    };
+    return human;
   }
 
   async update(
     id: number,
     updateHumanDto: UpdateHumanDto,
   ): Promise<SuccessResponse<Human>> {
-    const { data: human } = await this.findOne(id);
+    const human = await this.findOne(id);
 
     this.humanRepository.merge(human, updateHumanDto);
     const updatedHuman = await this.humanRepository.save(human);
@@ -98,10 +95,10 @@ export class HumanService {
     };
   }
 
-  async softDelete(id: number): Promise<SuccessResponse<void>> {
-    const { data: humanToRemove } = await this.findOne(id);
+  async softDelete(id: number): Promise<SuccessResponse> {
+    const human = await this.findOne(id);
 
-    await this.humanRepository.softRemove(humanToRemove);
+    await this.humanRepository.softRemove(human);
 
     return {
       status: true,
@@ -109,8 +106,8 @@ export class HumanService {
     };
   }
 
-  async recover(id: number): Promise<SuccessResponse<void>> {
-    const { data: human } = await this.findOne(id, { withDeleted: true });
+  async recover(id: number): Promise<SuccessResponse> {
+    const human = await this.findOne(id, { withDeleted: true });
 
     if (!human.deletedAt) {
       throw new NotFoundException(
@@ -128,7 +125,7 @@ export class HumanService {
     };
   }
 
-  async hardDelete(id: number): Promise<SuccessResponse<void>> {
+  async hardDelete(id: number): Promise<SuccessResponse> {
     const result = await this.humanRepository.delete(id);
 
     if (result.affected === 0) {
