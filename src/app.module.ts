@@ -5,6 +5,7 @@ import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { dbConfig } from 'config/db.config';
 import { HumanModule } from './modules/human/human.module';
+import { AnimalModule } from './modules/animal/animal.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { HumanModule } from './modules/human/human.module';
     }),
     TypeOrmModule.forRoot(dbConfig),
     HumanModule,
+    AnimalModule,
   ],
   controllers: [AppController],
   providers: [AppService],
