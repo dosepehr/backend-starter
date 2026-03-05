@@ -13,12 +13,14 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { throttlerConfig } from 'config/throttler.config';
 import { APP_GUARD } from '@nestjs/core';
 import { HealthModule } from 'utils/common/health/health.module';
+import { validateEnv } from 'utils/env/env.dto';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
+      validate: validateEnv,
     }),
     WinstonModule.forRoot(loggerConfig),
     LoggerModule,
