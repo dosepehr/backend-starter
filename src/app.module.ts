@@ -9,6 +9,9 @@ import { AnimalModule } from './modules/animal/animal.module';
 import { loggerConfig } from 'config/logger.config';
 import { WinstonModule } from 'nest-winston';
 import { LoggerModule } from 'utils/common/logger/logger.module';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { throttlerConfig } from 'config/throttler.config';
+import { APP_GUARD } from '@nestjs/core';
 
 @Module({
   imports: [
@@ -18,11 +21,18 @@ import { LoggerModule } from 'utils/common/logger/logger.module';
     }),
     WinstonModule.forRoot(loggerConfig),
     LoggerModule,
+    ThrottlerModule.forRoot(throttlerConfig),
     TypeOrmModule.forRootAsync(dbConfig),
     HumanModule,
     AnimalModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}
