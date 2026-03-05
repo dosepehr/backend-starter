@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import {
+  And,
   Between,
   FindOptionsWhere,
   ILike,
@@ -170,9 +171,31 @@ export class FilterService {
     }
   }
 
+  private resolveMultiOperator(
+    fieldValue: Record<string, string>,
+    type: FilterableField<any>['type'],
+  ): any {
+    const conditions: any[] = [];
+
+    for (const [op, val] of Object.entries(fieldValue)) {
+      if (!OPERATORS.includes(op as Operator)) continue;
+      try {
+        conditions.push(
+          this.applyOperator(op as Operator, val as string, type),
+        );
+      } catch (e) {
+        console.warn(`[FilterService] ${(e as Error).message}`);
+      }
+    }
+
+    if (conditions.length === 0) return undefined;
+    if (conditions.length === 1) return conditions[0];
+    return And(...conditions);
+  }
+
 
   buildQuery<T extends ObjectLiteral>(
-    query: Record<string, string>,
+    query: Record<string, any>,
     allowedFields: FilterableField<T>[],
   ): FilterResult<T> {
     const where: Record<string, any> = {};
@@ -180,30 +203,17 @@ export class FilterService {
 
     for (const fieldMeta of allowedFields) {
       const fieldName = fieldMeta.field as string;
+      const rawValue = query[fieldName];
 
-      const operatorKey = Object.keys(query).find((k) =>
-        OPERATORS.some((op) => k === `${fieldName}[${op}]`),
-      );
+      if (rawValue === undefined) continue;
 
-      if (operatorKey) {
-        const match = operatorKey.match(/\[(.+)\]/);
-        if (match) {
-          const operator = match[1] as Operator;
-          try {
-            where[fieldName] = this.applyOperator(
-              operator,
-              query[operatorKey],
-              fieldMeta.type,
-            );
-          } catch (e) {
-            console.warn(`[FilterService] ${e.message}`);
-          }
+      if (typeof rawValue === 'object' && rawValue !== null) {
+        const result = this.resolveMultiOperator(rawValue, fieldMeta.type);
+        if (result !== undefined) {
+          where[fieldName] = result;
         }
         continue;
       }
-
-      const rawValue = query[fieldName];
-      if (rawValue === undefined) continue;
 
       if (fieldMeta.nullable) {
         const nullableResult = this.transformNullableValue(rawValue);
