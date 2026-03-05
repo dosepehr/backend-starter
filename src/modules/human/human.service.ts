@@ -5,7 +5,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Human } from './entities/human.entity';
 import { FindOneOptions, Repository } from 'typeorm';
 import { SuccessResponse } from 'utils/interfaces/api-responses.interface';
-import { FilterService } from 'utils/services/filter/filter.service';
+import { FilterService } from 'utils/common/filter/filter.service';
 import { FilterableField } from 'utils/interfaces/filterable-field.interface';
 
 const HUMAN_FILTERABLE_FIELDS: FilterableField<Human>[] = [
