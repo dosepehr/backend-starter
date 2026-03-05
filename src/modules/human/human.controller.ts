@@ -1,4 +1,3 @@
-// src/human/human.controller.ts
 import {
   Controller,
   Get,
@@ -14,19 +13,27 @@ import { HumanService } from './human.service';
 import { CreateHumanDto } from './dto/create-human.dto';
 import { UpdateHumanDto } from './dto/update-human.dto';
 import { PaginationDto } from 'utils/common/pagination/pagination.dto';
-import { ResponseMessage } from 'utils/decorators/response-message.decorator';
+import { ApiTags } from '@nestjs/swagger';
+import { Human } from './entities/human.entity';
+import { ApiPaginated } from 'utils/decorators/api-paginated.decorator';
+import {
+  DocsResponse,
+  DocsResponseNull,
+} from 'utils/decorators/api-response.decorator';
 
+@ApiTags('Human')
 @Controller('human')
 export class HumanController {
   constructor(private readonly humanService: HumanService) {}
 
   @Post()
-  @ResponseMessage('Human created successfully')
+  @DocsResponse('Human created successfully', Human)
   create(@Body() createHumanDto: CreateHumanDto) {
     return this.humanService.create(createHumanDto);
   }
 
   @Get()
+  @ApiPaginated(Human)
   findAll(
     @Query() query: Record<string, string>,
     @Query() paginationDto: PaginationDto,
@@ -35,13 +42,13 @@ export class HumanController {
   }
 
   @Get(':id')
-  @ResponseMessage('Human fetched successfully')
+  @DocsResponse('Human fetched successfully', Human)
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.humanService.findOne(id);
   }
 
   @Patch(':id')
-  @ResponseMessage('Human updated successfully')
+  @DocsResponse('Human updated successfully', Human)
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateHumanDto: UpdateHumanDto,
@@ -50,19 +57,19 @@ export class HumanController {
   }
 
   @Delete(':id/soft')
-  @ResponseMessage('Human soft deleted successfully')
+  @DocsResponseNull('Human soft deleted successfully')
   softDelete(@Param('id', ParseIntPipe) id: number) {
     return this.humanService.softDelete(id);
   }
 
   @Patch(':id/recover')
-  @ResponseMessage('Human recovered successfully')
+  @DocsResponseNull('Human recovered successfully')
   recover(@Param('id', ParseIntPipe) id: number) {
     return this.humanService.recover(id);
   }
 
   @Delete(':id/hard')
-  @ResponseMessage('Human hard deleted successfully')
+  @DocsResponseNull('Human hard deleted successfully')
   hardDelete(@Param('id', ParseIntPipe) id: number) {
     return this.humanService.hardDelete(id);
   }
