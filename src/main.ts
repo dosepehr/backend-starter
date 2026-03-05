@@ -11,11 +11,13 @@ import { AppLogger } from 'utils/common/logger/logger.service';
 import { LoggingInterceptor } from 'utils/common/logger/logger.interceptor';
 import helmet from 'helmet';
 import compression from 'compression';
+import { ConfigService } from '@nestjs/config';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     bufferLogs: true,
   });
+  const configService = app.get(ConfigService);
 
   // Logger
   app.useLogger(app.get(WINSTON_MODULE_NEST_PROVIDER));
@@ -36,10 +38,18 @@ async function bootstrap() {
     }),
   );
 
+  // Cors
+  app.enableCors({
+    origin: configService.get<string>('CORS_ORIGIN', '*'),
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID'],
+    exposedHeaders: ['X-Request-ID'],
+    credentials: true,
+  });
   // Compression
   app.use(compression());
 
-  // Global Pipes / Filters / Interceptors 
+  // Global Pipes / Filters / Interceptors
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -76,8 +86,8 @@ async function bootstrap() {
   app.enableShutdownHooks();
 
   // Start
-  const PORT = process.env.PORT ?? 3000;
-  const ENV = process.env.NODE_ENV ?? 'development';
+  const PORT = configService.get('PORT', '3000');
+  const ENV = configService.get('NODE_ENV', 'development');
 
   await app.listen(PORT);
 
