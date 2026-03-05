@@ -16,19 +16,7 @@ import {
 } from 'typeorm';
 import { FilterableField } from '../../interfaces/filterable-field.interface';
 
-type Operator =
-  | '$eq'
-  | '$ne'
-  | '$like'
-  | '$ilike'
-  | '$gte'
-  | '$lte'
-  | '$gt'
-  | '$lt'
-  | '$in'
-  | '$between';
-
-const OPERATORS: Operator[] = [
+const OPERATORS = [
   '$eq',
   '$ne',
   '$like',
@@ -39,7 +27,9 @@ const OPERATORS: Operator[] = [
   '$lt',
   '$in',
   '$between',
-];
+] as const;
+
+type Operator = (typeof OPERATORS)[number];
 
 export interface FilterResult<T extends ObjectLiteral> {
   where: FindOptionsWhere<T> | undefined;
@@ -48,7 +38,6 @@ export interface FilterResult<T extends ObjectLiteral> {
 
 @Injectable()
 export class FilterService {
-
   private parseValue(
     value: string,
     type: FilterableField<any>['type'],
@@ -116,9 +105,7 @@ export class FilterService {
         return LessThan(this.parseValue(value, type));
 
       case '$in':
-        return In(
-          value.split(',').map((v) => this.parseValue(v.trim(), type)),
-        );
+        return In(value.split(',').map((v) => this.parseValue(v.trim(), type)));
 
       case '$between': {
         const parts = value.split(',');
@@ -192,7 +179,6 @@ export class FilterService {
     if (conditions.length === 1) return conditions[0];
     return And(...conditions);
   }
-
 
   buildQuery<T extends ObjectLiteral>(
     query: Record<string, any>,
