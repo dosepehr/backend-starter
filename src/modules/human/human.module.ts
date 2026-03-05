@@ -3,7 +3,7 @@ import { HumanService } from './human.service';
 import { HumanController } from './human.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Human } from './entities/human.entity';
-import { FilterModule } from 'utils/common/filter/filter.module';
+import { FilterModule } from 'utils/common/filtering/filter.module';
 import { PaginationModule } from 'utils/common/pagination/pagination.module';
 import { OrderingModule } from 'utils/common/ordering/ordering.module';
 
