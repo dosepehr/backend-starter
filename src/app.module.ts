@@ -1,4 +1,4 @@
-import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule, OnApplicationShutdown } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ConfigModule } from '@nestjs/config';
@@ -15,6 +15,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { HealthModule } from 'utils/common/health/health.module';
 import { validateEnv } from 'utils/env/env.dto';
 import { RequestIdMiddleware } from 'utils/middlewares/request-id.middleware';
+import { AppLogger } from 'utils/common/logger/logger.service';
 
 @Module({
   imports: [
@@ -40,8 +41,17 @@ import { RequestIdMiddleware } from 'utils/middlewares/request-id.middleware';
     },
   ],
 })
-export class AppModule implements NestModule {
+export class AppModule implements NestModule, OnApplicationShutdown {
+  constructor(private readonly logger: AppLogger) {}
+
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(RequestIdMiddleware).forRoutes('*');
+    consumer.apply(RequestIdMiddleware).forRoutes('*path');
+  }
+
+  onApplicationShutdown(signal?: string) {
+    this.logger.log(
+      `Received signal: ${signal ?? 'unknown'} — shutting down gracefully`,
+      'Shutdown',
+    );
   }
 }

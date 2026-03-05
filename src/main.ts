@@ -17,7 +17,11 @@ async function bootstrap() {
     bufferLogs: true,
   });
 
+  // Logger
   app.useLogger(app.get(WINSTON_MODULE_NEST_PROVIDER));
+  const appLogger = app.get(AppLogger);
+
+  // Security
   app.use(
     helmet({
       contentSecurityPolicy: {
@@ -31,8 +35,11 @@ async function bootstrap() {
       },
     }),
   );
+
+  // Compression
   app.use(compression());
 
+  // Global Pipes / Filters / Interceptors 
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -42,15 +49,17 @@ async function bootstrap() {
   );
 
   const reflector = app.get(Reflector);
-  const appLogger = app.get(AppLogger);
 
+  // Log every request/response and format all outgoing responses
   app.useGlobalInterceptors(
     new LoggingInterceptor(appLogger),
     new ResponseInterceptor(reflector),
   );
 
+  // Catch and format all thrown exceptions into a standard error shape
   app.useGlobalFilters(new HttpExceptionFilter(appLogger));
 
+  // Versioning
   app.enableVersioning({
     type: VersioningType.URI,
     defaultVersion: '1',
@@ -58,10 +67,15 @@ async function bootstrap() {
 
   app.setGlobalPrefix('api');
 
+  // Swagger
   const documentFactory = () =>
     SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('api/docs', app, documentFactory);
 
+  // Graceful Shutdown
+  app.enableShutdownHooks();
+
+  // Start
   const PORT = process.env.PORT ?? 3000;
   const ENV = process.env.NODE_ENV ?? 'development';
 
@@ -71,4 +85,5 @@ async function bootstrap() {
   appLogger.log(`App         : http://localhost:${PORT}`, 'Bootstrap');
   appLogger.log(`Swagger     : http://localhost:${PORT}/api/docs`, 'Bootstrap');
 }
+
 bootstrap();
