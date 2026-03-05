@@ -4,7 +4,6 @@ import { UpdateHumanDto } from './dto/update-human.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Human } from './entities/human.entity';
 import { FindOneOptions, Repository } from 'typeorm';
-import { SuccessResponse } from 'utils/interfaces/api-responses.interface';
 import { FilterService } from 'utils/common/filtering/filter.service';
 import { FilterableField } from 'utils/interfaces/filterable-field.interface';
 import { PaginationService } from 'utils/common/pagination/pagination.service';
@@ -34,16 +33,9 @@ export class HumanService {
     private readonly searchService: SearchService,
   ) {}
 
-  async create(
-    createHumanDto: CreateHumanDto,
-  ): Promise<SuccessResponse<Human>> {
+  async create(createHumanDto: CreateHumanDto) {
     const human = this.humanRepository.create(createHumanDto);
-    await this.humanRepository.save(human);
-    return {
-      status: true,
-      message: 'Human is created',
-      data: human,
-    };
+    return this.humanRepository.save(human);
   }
 
   async findAll(query: Record<string, string>, paginationDto: PaginationDto) {
@@ -67,6 +59,7 @@ export class HumanService {
       { where, order, withDeleted },
     );
   }
+
   async findOne(id: number, options?: FindOneOptions<Human>) {
     const human = await this.humanRepository.findOne({
       where: { id },
@@ -75,38 +68,22 @@ export class HumanService {
     if (!human) {
       throw new NotFoundException(`Human with ID ${id} not found`);
     }
-
     return human;
   }
 
-  async update(
-    id: number,
-    updateHumanDto: UpdateHumanDto,
-  ): Promise<SuccessResponse<Human>> {
+  async update(id: number, updateHumanDto: UpdateHumanDto) {
     const human = await this.findOne(id);
-
     this.humanRepository.merge(human, updateHumanDto);
-    const updatedHuman = await this.humanRepository.save(human);
-
-    return {
-      status: true,
-      message: 'Human updated successfully',
-      data: updatedHuman,
-    };
+    return this.humanRepository.save(human);
   }
 
-  async softDelete(id: number): Promise<SuccessResponse> {
+  async softDelete(id: number) {
     const human = await this.findOne(id);
-
     await this.humanRepository.softRemove(human);
-
-    return {
-      status: true,
-      message: `Human with ID ${id} soft deleted successfully`,
-    };
+    return null;
   }
 
-  async recover(id: number): Promise<SuccessResponse> {
+  async recover(id: number) {
     const human = await this.findOne(id, { withDeleted: true });
 
     if (!human.deletedAt) {
@@ -114,18 +91,14 @@ export class HumanService {
         `Human with ID ${id} is not deleted and cannot be recovered.`,
       );
     }
+
     human.deletedAt = null;
     human.recoveredAt = new Date();
-
     await this.humanRepository.save(human);
-
-    return {
-      status: true,
-      message: `Human with ID ${id} recovered successfully`,
-    };
+    return null;
   }
 
-  async hardDelete(id: number): Promise<SuccessResponse> {
+  async hardDelete(id: number) {
     const result = await this.humanRepository.delete(id);
 
     if (result.affected === 0) {
@@ -134,9 +107,6 @@ export class HumanService {
       );
     }
 
-    return {
-      status: true,
-      message: `Human with ID ${id} hard deleted successfully`,
-    };
+    return null;
   }
 }
