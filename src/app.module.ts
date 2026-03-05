@@ -1,4 +1,4 @@
-import { Module, } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ConfigModule } from '@nestjs/config';
@@ -6,6 +6,9 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { dbConfig } from 'config/db.config';
 import { HumanModule } from './modules/human/human.module';
 import { AnimalModule } from './modules/animal/animal.module';
+import { loggerConfig } from 'config/logger.config';
+import { WinstonModule } from 'nest-winston';
+import { LoggerModule } from 'utils/common/logger/logger.module';
 
 @Module({
   imports: [
@@ -13,6 +16,8 @@ import { AnimalModule } from './modules/animal/animal.module';
       isGlobal: true,
       envFilePath: '.env',
     }),
+    WinstonModule.forRoot(loggerConfig),
+    LoggerModule,
     TypeOrmModule.forRootAsync(dbConfig),
     HumanModule,
     AnimalModule,

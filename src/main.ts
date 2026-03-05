@@ -6,20 +6,34 @@ import { swaggerConfig } from 'config/swagger.config';
 import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { ResponseInterceptor } from 'utils/interceptors/response.interceptor';
 import { HttpExceptionFilter } from 'utils/filters/http-exception.filter';
+import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
+import { AppLogger } from 'utils/common/logger/logger.service';
+import { LoggingInterceptor } from 'utils/common/logger/logger.interceptor';
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    bufferLogs: true,
+  });
+
+  app.useLogger(app.get(WINSTON_MODULE_NEST_PROVIDER));
 
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true, // ignores unused fields
-      forbidNonWhitelisted: false, // returns error for unused fields
+      whitelist: true,
+      forbidNonWhitelisted: false,
       transform: true,
     }),
   );
+
   const reflector = app.get(Reflector);
-  app.useGlobalInterceptors(new ResponseInterceptor(reflector));
-  app.useGlobalFilters(new HttpExceptionFilter());
+  const appLogger = app.get(AppLogger);
+
+  app.useGlobalInterceptors(
+    new LoggingInterceptor(appLogger),
+    new ResponseInterceptor(reflector),
+  );
+
+  app.useGlobalFilters(new HttpExceptionFilter(appLogger));
 
   app.enableVersioning({
     type: VersioningType.URI,
@@ -27,7 +41,7 @@ async function bootstrap() {
   });
 
   app.setGlobalPrefix('api');
-  // swagger config
+
   const documentFactory = () =>
     SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('api/docs', app, documentFactory);
@@ -37,9 +51,8 @@ async function bootstrap() {
 
   await app.listen(PORT);
 
-  console.log(`✅ Environment  : ${ENV}`);
-  console.log(`✅ Database     : connected`);
-  console.log(`🚀 App          : http://localhost:${PORT}`);
-  console.log(`📚 Swagger      : http://localhost:${PORT}/api/docs`);
+  appLogger.log(`Environment : ${ENV}`, 'Bootstrap');
+  appLogger.log(`App         : http://localhost:${PORT}`, 'Bootstrap');
+  appLogger.log(`Swagger     : http://localhost:${PORT}/api/docs`, 'Bootstrap');
 }
 bootstrap();

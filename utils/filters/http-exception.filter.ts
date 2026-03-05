@@ -7,9 +7,12 @@ import {
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { ErrorResponse } from 'utils/interfaces/api-responses.interface';
+import { AppLogger } from 'utils/common/logger/logger.service';
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
+  constructor(private readonly logger: AppLogger) {}
+
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
@@ -37,6 +40,18 @@ export class HttpExceptionFilter implements ExceptionFilter {
     } else if (exception instanceof Error) {
       message = exception.message;
     }
+
+    const startTime = (request as any).startTime as number | undefined;
+    const duration = startTime ? `${Date.now() - startTime}ms` : '-';
+    const { method, originalUrl } = request;
+
+
+    const logMessage =
+      exception instanceof Error && status >= 500
+        ? `${method} ${originalUrl} → ${status} (${duration}) | ${message}\n${exception.stack}`
+        : `${method} ${originalUrl} → ${status} (${duration}) | ${message}`;
+
+    this.logger.error(logMessage, undefined, 'HTTP');
 
     const errorResponse: ErrorResponse = {
       status: false,
