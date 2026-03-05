@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ConfigModule } from '@nestjs/config';
@@ -14,6 +14,7 @@ import { throttlerConfig } from 'config/throttler.config';
 import { APP_GUARD } from '@nestjs/core';
 import { HealthModule } from 'utils/common/health/health.module';
 import { validateEnv } from 'utils/env/env.dto';
+import { RequestIdMiddleware } from 'utils/middlewares/request-id.middleware';
 
 @Module({
   imports: [
@@ -39,4 +40,8 @@ import { validateEnv } from 'utils/env/env.dto';
     },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(RequestIdMiddleware).forRoutes('*');
+  }
+}

@@ -19,13 +19,18 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
 
+    const requestId = request['requestId'] as string | undefined;
+
     // Handle Terminus HealthCheckError
     if (this.isHealthCheckError(exception)) {
       const exceptionResponse = (
         exception as HttpException
       ).getResponse() as Record<string, any>;
       const { details, ...cleaned } = exceptionResponse;
-      return void response.status(HttpStatus.SERVICE_UNAVAILABLE).json(cleaned);
+      return void response.status(HttpStatus.SERVICE_UNAVAILABLE).json({
+        ...cleaned,
+        ...(requestId && { requestId }),
+      });
     }
 
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
@@ -57,8 +62,8 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
     const logMessage =
       exception instanceof Error && status >= 500
-        ? `${method} ${originalUrl} → ${status} (${duration}) | ${message}\n${exception.stack}`
-        : `${method} ${originalUrl} → ${status} (${duration}) | ${message}`;
+        ? `${method} ${originalUrl} → ${status} (${duration}) | reqId: ${requestId ?? '-'} | ${message}\n${exception.stack}`
+        : `${method} ${originalUrl} → ${status} (${duration}) | reqId: ${requestId ?? '-'} | ${message}`;
 
     this.logger.error(logMessage, undefined, 'HTTP');
 
@@ -66,6 +71,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       status: false,
       message,
       ...(errors && { errors }),
+      ...(requestId && { requestId }),
     };
 
     response.status(status).json(errorResponse);
