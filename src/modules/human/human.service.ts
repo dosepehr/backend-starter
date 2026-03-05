@@ -7,6 +7,8 @@ import { FindOneOptions, Repository } from 'typeorm';
 import { SuccessResponse } from 'utils/interfaces/api-responses.interface';
 import { FilterService } from 'utils/common/filter/filter.service';
 import { FilterableField } from 'utils/interfaces/filterable-field.interface';
+import { PaginationService } from 'utils/common/pagination/pagination.service';
+import { PaginationDto } from 'utils/common/pagination/pagination.dto';
 
 const HUMAN_FILTERABLE_FIELDS: FilterableField<Human>[] = [
   { field: 'name', type: 'string' },
@@ -23,6 +25,7 @@ export class HumanService {
     @InjectRepository(Human)
     private readonly humanRepository: Repository<Human>,
     private readonly filterService: FilterService,
+    private readonly paginationService: PaginationService,
   ) {}
 
   async create(
@@ -39,18 +42,20 @@ export class HumanService {
 
   async findAll(
     query: Record<string, string>,
+    paginationDto: PaginationDto,
   ): Promise<SuccessResponse<Human[]>> {
-    const options = this.filterService.buildQuery<Human>(
+    const filterOptions = this.filterService.buildQuery(
       query,
       HUMAN_FILTERABLE_FIELDS,
     );
 
-    const humans = await this.humanRepository.find(options);
-    return {
-      status: true,
-      data: humans,
-    };
+    return this.paginationService.paginate(
+      this.humanRepository,
+      paginationDto,
+      filterOptions,
+    );
   }
+
   async findOne(id: number, options?: FindOneOptions<Human>) {
     const human = await this.humanRepository.findOne({
       where: { id },

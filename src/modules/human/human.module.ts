@@ -4,9 +4,10 @@ import { HumanController } from './human.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Human } from './entities/human.entity';
 import { FilterModule } from 'utils/common/filter/filter.module';
+import { PaginationModule } from 'utils/common/pagination/pagination.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Human]), FilterModule],
+  imports: [TypeOrmModule.forFeature([Human]), PaginationModule, FilterModule],
   controllers: [HumanController],
   providers: [HumanService],
 })

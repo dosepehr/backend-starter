@@ -1,7 +1,17 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  Query,
+} from '@nestjs/common';
 import { HumanService } from './human.service';
 import { CreateHumanDto } from './dto/create-human.dto';
 import { UpdateHumanDto } from './dto/update-human.dto';
+import { PaginationDto } from 'utils/common/pagination/pagination.dto';
 
 @Controller('human')
 export class HumanController {
@@ -12,10 +22,13 @@ export class HumanController {
     return this.humanService.create(createHumanDto);
   }
 
-@Get()
-findAll(@Query() query: Record<string, string>) {
-  return this.humanService.findAll(query);
-}
+  @Get()
+  findAll(
+    @Query() paginationDto: PaginationDto,
+    @Query() query: Record<string, string>,
+  ) {
+    return this.humanService.findAll(query, paginationDto);
+  }
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.humanService.findOne(+id);
