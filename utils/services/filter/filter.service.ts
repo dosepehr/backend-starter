@@ -4,6 +4,7 @@ import {
   IsNull,
   Not,
   Like,
+  ILike,
   Between,
   In,
   MoreThanOrEqual,
@@ -15,13 +16,28 @@ import { FilterableField } from '../../interfaces/filterable-field.interface';
 
 type Operator =
   | '$eq'
+  | '$ne'
   | '$like'
+  | '$ilike'
   | '$gte'
   | '$lte'
   | '$gt'
   | '$lt'
   | '$in'
   | '$between';
+
+const OPERATORS: Operator[] = [
+  '$eq',
+  '$ne',
+  '$like',
+  '$ilike',
+  '$gte',
+  '$lte',
+  '$gt',
+  '$lt',
+  '$in',
+  '$between',
+];
 
 @Injectable()
 export class FilterService {
@@ -76,8 +92,14 @@ export class FilterService {
     type: FilterableField<any>['type'],
   ): any {
     switch (operator) {
+      case '$ne':
+        return Not(this.parseValue(value, type));
+
       case '$like':
         return Like(`%${value}%`);
+
+      case '$ilike':
+        return ILike(`%${value}%`);
 
       case '$gte':
         return MoreThanOrEqual(this.parseValue(value, type));
@@ -99,8 +121,8 @@ export class FilterService {
         if (parts.length !== 2)
           throw new Error(`$between requires exactly 2 values`);
 
-        const min = this.parseValue(parts[0].trim(), type, 'start'); 
-        const max = this.parseValue(parts[1].trim(), type, 'end'); 
+        const min = this.parseValue(parts[0].trim(), type, 'start');
+        const max = this.parseValue(parts[1].trim(), type, 'end');
 
         return Between(min, max);
       }
@@ -147,16 +169,8 @@ export class FilterService {
     for (const fieldMeta of allowedFields) {
       const fieldName = fieldMeta.field as string;
 
-      const operatorKey = Object.keys(query).find(
-        (k) =>
-          k === `${fieldName}[$eq]` ||
-          k === `${fieldName}[$gte]` ||
-          k === `${fieldName}[$lte]` ||
-          k === `${fieldName}[$gt]` ||
-          k === `${fieldName}[$lt]` ||
-          k === `${fieldName}[$like]` ||
-          k === `${fieldName}[$in]` ||
-          k === `${fieldName}[$between]`,
+      const operatorKey = Object.keys(query).find((k) =>
+        OPERATORS.some((op) => k === `${fieldName}[${op}]`),
       );
 
       if (operatorKey) {
