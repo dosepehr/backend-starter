@@ -1,4 +1,4 @@
-import { Module, OnModuleInit, OnApplicationBootstrap } from '@nestjs/common';
+import { Module, } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ConfigModule } from '@nestjs/config';
@@ -13,19 +13,11 @@ import { AnimalModule } from './modules/animal/animal.module';
       isGlobal: true,
       envFilePath: '.env',
     }),
-    TypeOrmModule.forRoot(dbConfig),
+    TypeOrmModule.forRootAsync(dbConfig),
     HumanModule,
     AnimalModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule implements OnModuleInit, OnApplicationBootstrap {
-  onModuleInit() {
-    console.log('.env file has been read');
-  }
-
-  onApplicationBootstrap() {
-    console.log('Database connected.');
-  }
-}
+export class AppModule {}

@@ -25,9 +25,14 @@ async function bootstrap() {
     SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('api/docs', app, documentFactory);
 
-  // global port
-  const PORT = process.env.PORT ?? 3000;
-  console.log(`app is running on port ${PORT}`);
+  const PORT = process.env.APP_PORT ?? 3000;
+  const ENV = process.env.APP_ENV ?? 'development';
+
   await app.listen(PORT);
+
+  console.log(`✅ Environment  : ${ENV}`);
+  console.log(`✅ Database     : connected`);
+  console.log(`🚀 App          : http://localhost:${PORT}`);
+  console.log(`📚 Swagger      : http://localhost:${PORT}/api/docs`);
 }
 bootstrap();
