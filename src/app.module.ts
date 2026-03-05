@@ -12,6 +12,7 @@ import { LoggerModule } from 'utils/common/logger/logger.module';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { throttlerConfig } from 'config/throttler.config';
 import { APP_GUARD } from '@nestjs/core';
+import { HealthModule } from 'utils/common/health/health.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { APP_GUARD } from '@nestjs/core';
     TypeOrmModule.forRootAsync(dbConfig),
     HumanModule,
     AnimalModule,
+    HealthModule,
   ],
   controllers: [AppController],
   providers: [

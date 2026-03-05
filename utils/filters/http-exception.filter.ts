@@ -4,6 +4,7 @@ import {
   ExceptionFilter,
   HttpException,
   HttpStatus,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { ErrorResponse } from 'utils/interfaces/api-responses.interface';
@@ -17,6 +18,15 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
+
+    // Handle Terminus HealthCheckError
+    if (this.isHealthCheckError(exception)) {
+      const exceptionResponse = (
+        exception as HttpException
+      ).getResponse() as Record<string, any>;
+      const { details, ...cleaned } = exceptionResponse;
+      return void response.status(HttpStatus.SERVICE_UNAVAILABLE).json(cleaned);
+    }
 
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
     let message = 'Internal server error';
@@ -45,7 +55,6 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const duration = startTime ? `${Date.now() - startTime}ms` : '-';
     const { method, originalUrl } = request;
 
-
     const logMessage =
       exception instanceof Error && status >= 500
         ? `${method} ${originalUrl} → ${status} (${duration}) | ${message}\n${exception.stack}`
@@ -62,9 +71,20 @@ export class HttpExceptionFilter implements ExceptionFilter {
     response.status(status).json(errorResponse);
   }
 
-  private formatValidationErrors(
-    messages: string[],
-  ): Record<string, string[]> {
+  private isHealthCheckError(exception: unknown): boolean {
+    if (!(exception instanceof ServiceUnavailableException)) return false;
+
+    const body = exception.getResponse();
+    return (
+      typeof body === 'object' &&
+      body !== null &&
+      'status' in body &&
+      'info' in body &&
+      'error' in body
+    );
+  }
+
+  private formatValidationErrors(messages: string[]): Record<string, string[]> {
     return messages.reduce(
       (acc, msg) => {
         const field = msg.split(' ')[0];
