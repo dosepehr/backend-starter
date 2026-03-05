@@ -25,41 +25,90 @@ type Operator =
 
 @Injectable()
 export class FilterService {
-  private applyOperator(operator: Operator, value: string): any {
-    switch (operator) {
-      case '$like':
-        return Like(`%${value}%`);
+  private parseValue(
+    value: string,
+    type: FilterableField<any>['type'],
+    position?: 'start' | 'end',
+  ): any {
+    switch (type) {
+      case 'date': {
+        const isDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(value.trim());
 
-      case '$gte':
-        return MoreThanOrEqual(this.parseNumber(value));
+        if (isDateOnly) {
+          if (position === 'end') {
+            const date = new Date(`${value}T23:59:59.999Z`);
+            if (isNaN(date.getTime()))
+              throw new Error(`Invalid date: ${value}`);
+            return date;
+          } else {
+            const date = new Date(`${value}T00:00:00.000Z`);
+            if (isNaN(date.getTime()))
+              throw new Error(`Invalid date: ${value}`);
+            return date;
+          }
+        }
 
-      case '$lte':
-        return LessThanOrEqual(this.parseNumber(value));
-
-      case '$gt':
-        return MoreThan(this.parseNumber(value));
-
-      case '$lt':
-        return LessThan(this.parseNumber(value));
-
-      case '$in':
-        return In(value.split(','));
-
-      case '$between': {
-        const [min, max] = value.split(',').map(Number);
-        return Between(min, max);
+        const date = new Date(value);
+        if (isNaN(date.getTime())) throw new Error(`Invalid date: ${value}`);
+        return date;
       }
 
-      case '$eq':
+      case 'number': {
+        const num = Number(value);
+        if (isNaN(num)) throw new Error(`Invalid number: ${value}`);
+        return num;
+      }
+
+      case 'boolean':
+        if (value === 'true') return true;
+        if (value === 'false') return false;
+        throw new Error(`Invalid boolean: ${value}`);
+
+      case 'string':
       default:
         return value;
     }
   }
 
-  private parseNumber(value: string): number {
-    const num = Number(value);
-    if (isNaN(num)) throw new Error(`Invalid number: ${value}`);
-    return num;
+  private applyOperator(
+    operator: Operator,
+    value: string,
+    type: FilterableField<any>['type'],
+  ): any {
+    switch (operator) {
+      case '$like':
+        return Like(`%${value}%`);
+
+      case '$gte':
+        return MoreThanOrEqual(this.parseValue(value, type));
+
+      case '$lte':
+        return LessThanOrEqual(this.parseValue(value, type));
+
+      case '$gt':
+        return MoreThan(this.parseValue(value, type));
+
+      case '$lt':
+        return LessThan(this.parseValue(value, type));
+
+      case '$in':
+        return In(value.split(',').map((v) => this.parseValue(v.trim(), type)));
+
+      case '$between': {
+        const parts = value.split(',');
+        if (parts.length !== 2)
+          throw new Error(`$between requires exactly 2 values`);
+
+        const min = this.parseValue(parts[0].trim(), type, 'start'); 
+        const max = this.parseValue(parts[1].trim(), type, 'end'); 
+
+        return Between(min, max);
+      }
+
+      case '$eq':
+      default:
+        return this.parseValue(value, type);
+    }
   }
 
   private transformValue(
@@ -72,13 +121,15 @@ export class FilterService {
         if (value === 'false') return false;
         return undefined;
 
-      case 'number':
+      case 'number': {
         const num = Number(value);
         return isNaN(num) ? undefined : num;
+      }
 
-      case 'date':
+      case 'date': {
         const date = new Date(value);
         return isNaN(date.getTime()) ? undefined : date;
+      }
 
       case 'string':
       default:
@@ -98,6 +149,7 @@ export class FilterService {
 
       const operatorKey = Object.keys(query).find(
         (k) =>
+          k === `${fieldName}[$eq]` ||
           k === `${fieldName}[$gte]` ||
           k === `${fieldName}[$lte]` ||
           k === `${fieldName}[$gt]` ||
@@ -111,7 +163,15 @@ export class FilterService {
         const match = operatorKey.match(/\[(.+)\]/);
         if (match) {
           const operator = match[1] as Operator;
-          where[fieldName] = this.applyOperator(operator, query[operatorKey]);
+          try {
+            where[fieldName] = this.applyOperator(
+              operator,
+              query[operatorKey],
+              fieldMeta.type,
+            );
+          } catch (e) {
+            console.warn(`[FilterService] ${e.message}`);
+          }
         }
         continue;
       }
@@ -119,13 +179,13 @@ export class FilterService {
       const rawValue = query[fieldName];
       if (rawValue === undefined) continue;
 
-      if (fieldMeta.type === 'boolean' && fieldMeta.nullable) {
-        const value = this.transformValue(rawValue, 'boolean');
-        if (value === undefined) continue;
+      if (fieldMeta.nullable) {
+        const boolValue = this.transformValue(rawValue, 'boolean');
+        if (boolValue === undefined) continue;
 
-        where[fieldName] = value ? Not(IsNull()) : IsNull();
+        where[fieldName] = boolValue ? Not(IsNull()) : IsNull();
 
-        if (fieldName === 'deletedAt' && value === true) {
+        if (fieldName === 'deletedAt' && boolValue === true) {
           withDeleted = true;
         }
         continue;

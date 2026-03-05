@@ -11,8 +11,10 @@ import { FilterableField } from 'utils/interfaces/filterable-field.interface';
 const HUMAN_FILTERABLE_FIELDS: FilterableField<Human>[] = [
   { field: 'name', type: 'string' },
   { field: 'age', type: 'number' },
-  { field: 'deletedAt', type: 'boolean', nullable: true },
-  { field: 'recoveredAt', type: 'boolean', nullable: true },
+  { field: 'deletedAt', type: 'date', nullable: true },
+  { field: 'recoveredAt', type: 'date', nullable: true },
+  { field: 'createdAt', type: 'date' },
+  { field: 'updatedAt', type: 'date' },
 ];
 
 @Injectable()
