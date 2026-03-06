@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateHumanDto } from './dto/create-human.dto';
 import { UpdateHumanDto } from './dto/update-human.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -23,6 +27,9 @@ const HUMAN_FILTERABLE_FIELDS: FilterableField<Human>[] = [
 const HUMAN_ORDERABLE_FIELDS = ['name', 'age', 'createdAt'];
 const HUMAN_SEARCHABLE_FIELDS = ['name'];
 
+const CACHE_TTL = 300;
+const cacheKey = (id: number) => `human:${id}`;
+
 @Injectable()
 export class HumanService {
   constructor(
@@ -32,6 +39,7 @@ export class HumanService {
     private readonly paginationService: PaginationService,
     private readonly orderingService: OrderingService,
     private readonly searchService: SearchService,
+    private readonly cacheService: CacheService,
   ) {}
 
   async create(createHumanDto: CreateHumanDto) {
@@ -62,25 +70,38 @@ export class HumanService {
   }
 
   async findOne(id: number, options?: FindOneOptions<Human>) {
-    const human = await this.humanRepository.findOne({
-      where: { id },
-      ...options,
-    });
-    if (!human) {
-      throw new NotFoundException(`Human with ID ${id} not found`);
+    if (options) {
+      const human = await this.humanRepository.findOne({
+        where: { id },
+        ...options,
+      });
+      if (!human) throw new NotFoundException(`Human with ID ${id} not found`);
+      return human;
     }
-    return human;
+
+    return this.cacheService.getOrSet<Human>(
+      cacheKey(id),
+      async () => {
+        const human = await this.humanRepository.findOne({ where: { id } });
+        if (!human) throw new NotFoundException(`Human with ID ${id} not found`);
+        return human;
+      },
+      CACHE_TTL,
+    );
   }
 
   async update(id: number, updateHumanDto: UpdateHumanDto) {
     const human = await this.findOne(id);
     this.humanRepository.merge(human, updateHumanDto);
-    return this.humanRepository.save(human);
+    const updated = await this.humanRepository.save(human);
+    await this.cacheService.del(cacheKey(id));
+    return updated;
   }
 
   async softDelete(id: number) {
     const human = await this.findOne(id);
     await this.humanRepository.softRemove(human);
+    await this.cacheService.del(cacheKey(id));
     return null;
   }
 
@@ -96,12 +117,15 @@ export class HumanService {
     human.deletedAt = null;
     human.recoveredAt = new Date();
     await this.humanRepository.save(human);
+    await this.cacheService.del(cacheKey(id));
+
     return null;
   }
 
   async hardDelete(id: number) {
     const human = await this.findOne(id, { withDeleted: true });
     await this.humanRepository.remove(human);
+    await this.cacheService.del(cacheKey(id));
     return null;
   }
 }

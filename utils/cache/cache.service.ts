@@ -5,7 +5,6 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import Redis from 'ioredis';
-
 import { AppLogger } from 'utils/common/logger/logger.service';
 import { REDIS_CONFIG, type RedisConfig } from './cache.config';
 
@@ -33,15 +32,9 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
     this.client.on('connect', () =>
       this.logger.log('Redis connection established', CacheService.name),
     );
-
     this.client.on('error', (err: Error) =>
-      this.logger.error(
-        `Redis error: ${err.message}`,
-        err.stack,
-        CacheService.name,
-      ),
+      this.logger.error(`Redis error: ${err.message}`, err.stack, CacheService.name),
     );
-
     this.client.on('close', () =>
       this.logger.warn('Redis connection closed', CacheService.name),
     );
@@ -82,9 +75,12 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
 
   /** Delete one or more keys. */
   async del(...keys: string[]): Promise<void> {
-    if (keys.length > 0) {
-      await this.client.del(...keys);
-    }
+    if (keys.length === 0) return;
+
+    await this.client.del(...keys);
+    keys.forEach((key) =>
+      this.logger.log(`Cache DEL | key: "${key}"`, CacheService.name),
+    );
   }
 
   /** Check if a key exists. */
@@ -105,8 +101,10 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
     return this.client.ttl(key);
   }
 
-  /**
+ /**
    * Get-or-set: return cached value, or call factory → cache → return.
+   * - HIT  → returns cached value without calling factory
+   * - MISS → calls factory, stores result in cache, then returns it
    */
   async getOrSet<T>(
     key: string,
@@ -114,22 +112,39 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
     ttl?: number,
   ): Promise<T> {
     const cached = await this.get<T>(key);
-    if (cached !== null) return cached;
+
+    if (cached !== null) {
+      this.logger.log(`Cache HIT | key: "${key}"`, CacheService.name);
+      return cached;
+    }
+
+    this.logger.log(`Cache MISS | key: "${key}"`, CacheService.name);
 
     const fresh = await factory();
-    await this.set(key, fresh, ttl);
+    const expiry = ttl ?? this.config.defaultTtl;
+    await this.set(key, fresh, expiry);
+
+    this.logger.log(
+      `Cache SET | key: "${key}" | TTL: ${expiry}s`,
+      CacheService.name,
+    );
+
     return fresh;
   }
 
   /**
-   * Delete all keys matching a glob pattern (e.g. 'users:*').
+   * Delete all keys matching a glob pattern (e.g. 'human:*').
    * Uses SCAN to avoid blocking in production.
    */
   async delByPattern(pattern: string): Promise<void> {
     const keys = await this.scanKeys(pattern);
-    if (keys.length > 0) {
-      await this.client.del(...keys);
-    }
+    if (keys.length === 0) return;
+
+    await this.client.del(...keys);
+    this.logger.log(
+      `Cache DEL pattern: "${pattern}" | ${keys.length} key(s) removed`,
+      CacheService.name,
+    );
   }
 
   // Internal Helpers
