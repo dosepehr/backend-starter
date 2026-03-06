@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { CreateHumanDto } from './dto/create-human.dto';
 import { UpdateHumanDto } from './dto/update-human.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -21,7 +21,7 @@ const HUMAN_FILTERABLE_FIELDS: FilterableField<Human>[] = [
   { field: 'updatedAt', type: 'date' },
 ];
 const HUMAN_ORDERABLE_FIELDS = ['name', 'age', 'createdAt'];
-const HUMAN_SEARCHABLE_FIELDS = ['name', 'age'];
+const HUMAN_SEARCHABLE_FIELDS = ['name'];
 
 @Injectable()
 export class HumanService {
@@ -32,7 +32,6 @@ export class HumanService {
     private readonly paginationService: PaginationService,
     private readonly orderingService: OrderingService,
     private readonly searchService: SearchService,
-    private readonly cacheService: CacheService,
   ) {}
 
   async create(createHumanDto: CreateHumanDto) {
@@ -89,7 +88,7 @@ export class HumanService {
     const human = await this.findOne(id, { withDeleted: true });
 
     if (!human.deletedAt) {
-      throw new NotFoundException(
+      throw new BadRequestException(
         `Human with ID ${id} is not deleted and cannot be recovered.`,
       );
     }
@@ -101,14 +100,8 @@ export class HumanService {
   }
 
   async hardDelete(id: number) {
-    const result = await this.humanRepository.delete(id);
-
-    if (result.affected === 0) {
-      throw new NotFoundException(
-        `Human with ID ${id} not found for hard delete`,
-      );
-    }
-
+    const human = await this.findOne(id, { withDeleted: true });
+    await this.humanRepository.remove(human);
     return null;
   }
 }
