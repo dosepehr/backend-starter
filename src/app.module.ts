@@ -16,6 +16,7 @@ import { HealthModule } from 'utils/common/health/health.module';
 import { validateEnv } from 'utils/env/env.dto';
 import { RequestIdMiddleware } from 'utils/middlewares/request-id.middleware';
 import { AppLogger } from 'utils/common/logger/logger.service';
+import { CacheModule } from 'utils/cache/cache.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { AppLogger } from 'utils/common/logger/logger.service';
     HumanModule,
     AnimalModule,
     HealthModule,
+    CacheModule
   ],
   controllers: [AppController],
   providers: [

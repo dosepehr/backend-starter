@@ -10,6 +10,7 @@ import { PaginationService } from 'utils/common/pagination/pagination.service';
 import { PaginationDto } from 'utils/common/pagination/pagination.dto';
 import { OrderingService } from 'utils/common/ordering/ordering.service';
 import { SearchService } from 'utils/common/searching/search.service';
+import { CacheService } from 'utils/cache/cache.service';
 
 const HUMAN_FILTERABLE_FIELDS: FilterableField<Human>[] = [
   { field: 'name', type: 'string' },
@@ -31,6 +32,7 @@ export class HumanService {
     private readonly paginationService: PaginationService,
     private readonly orderingService: OrderingService,
     private readonly searchService: SearchService,
+    private readonly cacheService: CacheService,
   ) {}
 
   async create(createHumanDto: CreateHumanDto) {
