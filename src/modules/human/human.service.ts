@@ -83,7 +83,8 @@ export class HumanService {
       cacheKey(id),
       async () => {
         const human = await this.humanRepository.findOne({ where: { id } });
-        if (!human) throw new NotFoundException(`Human with ID ${id} not found`);
+        if (!human)
+          throw new NotFoundException(`Human with ID ${id} not found`);
         return human;
       },
       CACHE_TTL,
@@ -99,7 +100,12 @@ export class HumanService {
   }
 
   async softDelete(id: number) {
-    const human = await this.findOne(id);
+    const human = await this.findOne(id, { withDeleted: true });
+
+    if (human.deletedAt) {
+      throw new BadRequestException(`Human with ID ${id} is already deleted.`);
+    }
+
     await this.humanRepository.softRemove(human);
     await this.cacheService.del(cacheKey(id));
     return null;
@@ -114,11 +120,11 @@ export class HumanService {
       );
     }
 
-    human.deletedAt = null;
-    human.recoveredAt = new Date();
-    await this.humanRepository.save(human);
-    await this.cacheService.del(cacheKey(id));
+    await this.humanRepository.recover(human);
 
+    await this.humanRepository.update(human.id, { recoveredAt: new Date() });
+
+    await this.cacheService.del(cacheKey(id));
     return null;
   }
 

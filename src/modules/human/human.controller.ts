@@ -69,7 +69,7 @@ export class HumanController {
 
   @Patch(':id/recover')
   @DocsResponseNull('Human recovered successfully')
-  @DocsErrors(404)
+  @DocsErrors(400, 404)
   recover(@Param('id', ParseIntPipe) id: number) {
     return this.humanService.recover(id);
   }

@@ -33,7 +33,11 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
       this.logger.log('Redis connection established', CacheService.name),
     );
     this.client.on('error', (err: Error) =>
-      this.logger.error(`Redis error: ${err.message}`, err.stack, CacheService.name),
+      this.logger.error(
+        `Redis error: ${err.message}`,
+        err.stack,
+        CacheService.name,
+      ),
     );
     this.client.on('close', () =>
       this.logger.warn('Redis connection closed', CacheService.name),
@@ -101,7 +105,7 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
     return this.client.ttl(key);
   }
 
- /**
+  /**
    * Get-or-set: return cached value, or call factory → cache → return.
    * - HIT  → returns cached value without calling factory
    * - MISS → calls factory, stores result in cache, then returns it
@@ -152,17 +156,18 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
   private async scanKeys(pattern: string): Promise<string[]> {
     const keys: string[] = [];
     let cursor = '0';
+    const prefixedPattern = `${this.config.keyPrefix}${pattern}`;
 
     do {
       const [next, batch] = await this.client.scan(
         cursor,
         'MATCH',
-        pattern,
+        prefixedPattern,
         'COUNT',
         100,
       );
       cursor = next;
-      keys.push(...batch);
+      keys.push(...batch.map((k) => k.slice(this.config.keyPrefix.length)));
     } while (cursor !== '0');
 
     return keys;
