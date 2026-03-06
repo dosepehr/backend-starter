@@ -62,7 +62,12 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
     await this.client?.quit();
     this.logger.log('Redis connection closed gracefully', CacheService.name);
   }
-
+  async ping(): Promise<void> {
+    const result = await this.client.ping();
+    if (result !== 'PONG') {
+      throw new Error(`Unexpected ping response: ${result}`);
+    }
+  }
   // Core Methods
 
   /** Get a value by key. Returns null if not found. */
