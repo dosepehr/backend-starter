@@ -24,6 +24,8 @@ import { AppLogger } from 'utils/common/logger/logger.service';
 import { CacheModule } from 'utils/cache/cache.module';
 import { CacheService } from 'utils/cache/cache.service';
 import { DataSource } from 'typeorm';
+import { AuthModule } from './modules/auth/auth.module';
+import { UsersModule } from './modules/users/users.module';
 
 @Module({
   imports: [
@@ -40,6 +42,8 @@ import { DataSource } from 'typeorm';
     AnimalModule,
     HealthModule,
     CacheModule,
+    UsersModule,
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [
