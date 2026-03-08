@@ -26,11 +26,6 @@ export class AuthGuard implements CanActivate {
       throw new UnauthorizedException('No token provided');
     }
 
-    const isBlacklisted = await this.cacheService.get<string>(`blacklist:${token}`);
-    if (isBlacklisted) {
-      throw new UnauthorizedException('Token has been revoked');
-    }
-
     let payload: JwtPayload;
     try {
       payload = await this.jwtService.verifyAsync<JwtPayload>(token, {
@@ -38,6 +33,13 @@ export class AuthGuard implements CanActivate {
       });
     } catch {
       throw new UnauthorizedException('Invalid or expired token');
+    }
+
+    const isBlacklisted = await this.cacheService.get<string>(
+      `blacklist:${token}`,
+    );
+    if (isBlacklisted) {
+      throw new UnauthorizedException('Token has been revoked');
     }
 
     request.user = {

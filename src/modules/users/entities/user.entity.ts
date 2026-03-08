@@ -1,10 +1,6 @@
-// src/users/entities/user.entity.ts
 import {
   Column,
-  CreateDateColumn,
   Entity,
-  PrimaryGeneratedColumn,
-  UpdateDateColumn,
 } from 'typeorm';
 import { UserRole } from '../enums/user-role.enum';
 import { GlobalEntity } from 'utils/global/global.entity';

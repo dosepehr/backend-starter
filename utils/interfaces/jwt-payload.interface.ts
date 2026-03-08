@@ -1,4 +1,4 @@
-import { UserRole } from "src/modules/users/enums/user-role.enum";
+import { UserRole } from 'src/modules/users/enums/user-role.enum';
 
 export interface JwtPayload {
   sub: string;
@@ -10,4 +10,9 @@ export interface JwtPayload {
 export interface AuthenticatedUser {
   userId: string;
   role: UserRole;
+}
+
+export class TokenResponseDto {
+  accessToken: string;
+  refreshToken: string;
 }
