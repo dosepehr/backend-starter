@@ -16,16 +16,19 @@ import { WinstonModule } from 'nest-winston';
 import { LoggerModule } from 'utils/common/logger/logger.module';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { throttlerConfig } from 'config/throttler.config';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { HealthModule } from 'utils/common/health/health.module';
 import { validateEnv } from 'utils/env/env.dto';
 import { RequestIdMiddleware } from 'utils/middlewares/request-id.middleware';
 import { AppLogger } from 'utils/common/logger/logger.service';
 import { CacheModule } from 'utils/cache/cache.module';
-import { CacheService } from 'utils/cache/cache.service';
 import { DataSource } from 'typeorm';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
+import { AuditInterceptor } from 'utils/interceptors/audit.interceptor';
+import { AuditSubscriber } from 'utils/subscribers/audit.subscriber';
+import { AuthGuard } from 'utils/guards/auth.guard';
+import { RolesGuard } from 'utils/guards/roles.guard';
 
 @Module({
   imports: [
@@ -48,16 +51,28 @@ import { UsersModule } from './modules/users/users.module';
   controllers: [AppController],
   providers: [
     AppService,
+    AuditSubscriber,
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: AuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: AuditInterceptor,
     },
   ],
 })
 export class AppModule implements NestModule, OnApplicationShutdown {
   constructor(
     private readonly logger: AppLogger,
-    private readonly cacheService: CacheService,
     private readonly dataSource: DataSource,
   ) {}
 

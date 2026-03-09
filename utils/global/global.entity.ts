@@ -1,28 +1,35 @@
 import {
-  PrimaryGeneratedColumn,
-  CreateDateColumn,
-  UpdateDateColumn,
-  DeleteDateColumn,
   Column,
+  CreateDateColumn,
+  DeleteDateColumn,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 
 export abstract class GlobalEntity {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @CreateDateColumn({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  @CreateDateColumn()
   createdAt: Date;
 
-  @UpdateDateColumn({
-    type: 'timestamp',
-    default: () => 'CURRENT_TIMESTAMP',
-    onUpdate: 'CURRENT_TIMESTAMP',
-  })
+  @UpdateDateColumn()
   updatedAt: Date;
 
-  @DeleteDateColumn({ type: 'timestamp', nullable: true })
+  @DeleteDateColumn()
   deletedAt: Date | null;
-
   @Column({ type: 'timestamp', nullable: true })
   recoveredAt: Date | null;
+
+  @Column({ type: 'int', nullable: true, default: null })
+  createdBy: number;
+
+  @Column({ type: 'int', nullable: true, default: null })
+  updatedBy: number;
+
+  @Column({ type: 'int', nullable: true, default: null })
+  deletedBy: number;
+
+  @Column({ type: 'int', nullable: true, default: null })
+  recoveredBy: number;
 }
