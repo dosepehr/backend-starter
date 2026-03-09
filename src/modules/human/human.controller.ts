@@ -13,7 +13,7 @@ import { HumanService } from './human.service';
 import { CreateHumanDto } from './dto/create-human.dto';
 import { UpdateHumanDto } from './dto/update-human.dto';
 import { PaginationDto } from 'utils/common/pagination/pagination.dto';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Human } from './entities/human.entity';
 import { ApiPaginated } from 'utils/decorators/docs-paginated.decorator';
 import {
@@ -21,12 +21,16 @@ import {
   DocsResponseNull,
 } from 'utils/decorators/docs-response.decorator';
 import { DocsErrors } from 'utils/decorators/docs-errors.decorator';
+import { Roles } from 'utils/decorators/roles.decorator';
+import { UserRole } from '../users/enums/user-role.enum';
+import { Public } from 'utils/decorators/public.decorator';
 
 @ApiTags('Human')
 @Controller('human')
 export class HumanController {
   constructor(private readonly humanService: HumanService) {}
 
+  @Public()
   @Get()
   @ApiPaginated(Human)
   findAll(
@@ -36,6 +40,7 @@ export class HumanController {
     return this.humanService.findAll(query, paginationDto);
   }
 
+  @Public()
   @Get(':id')
   @DocsResponse('Human fetched successfully', Human)
   @DocsErrors(404)
@@ -44,6 +49,8 @@ export class HumanController {
   }
 
   @Post()
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('access-token')
   @DocsResponse('Human created successfully', Human)
   @DocsErrors(400)
   create(@Body() createHumanDto: CreateHumanDto) {
@@ -51,6 +58,8 @@ export class HumanController {
   }
 
   @Patch(':id')
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('access-token')
   @DocsResponse('Human updated successfully', Human)
   @DocsErrors(400, 404)
   update(
@@ -61,6 +70,8 @@ export class HumanController {
   }
 
   @Delete(':id/soft')
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('access-token')
   @DocsResponseNull('Human soft deleted successfully')
   @DocsErrors(404)
   softDelete(@Param('id', ParseIntPipe) id: number) {
@@ -68,6 +79,8 @@ export class HumanController {
   }
 
   @Patch(':id/recover')
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('access-token')
   @DocsResponseNull('Human recovered successfully')
   @DocsErrors(400, 404)
   recover(@Param('id', ParseIntPipe) id: number) {
@@ -75,6 +88,8 @@ export class HumanController {
   }
 
   @Delete(':id/hard')
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('access-token')
   @DocsResponseNull('Human hard deleted successfully')
   @DocsErrors(404)
   hardDelete(@Param('id', ParseIntPipe) id: number) {

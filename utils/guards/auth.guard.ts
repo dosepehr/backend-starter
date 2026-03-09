@@ -5,9 +5,11 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 import { CacheService } from 'utils/cache/cache.service';
+import { IS_PUBLIC_KEY } from 'utils/decorators/public.decorator';
 import { JwtPayload } from 'utils/interfaces/jwt-payload.interface';
 
 @Injectable()
@@ -16,12 +18,17 @@ export class AuthGuard implements CanActivate {
     private readonly jwtService: JwtService,
     private readonly cacheService: CacheService,
     private readonly configService: ConfigService,
+    private readonly reflector: Reflector,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request>();
     const token = this.extractToken(request);
-
+    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    if (isPublic) return true;
     if (!token) {
       throw new UnauthorizedException('No token provided');
     }

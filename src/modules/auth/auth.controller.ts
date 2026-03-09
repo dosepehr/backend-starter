@@ -6,7 +6,6 @@ import {
   HttpStatus,
   Post,
   Req,
-  UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { type Request } from 'express';
@@ -15,7 +14,6 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { LogoutDto } from './dto/logout.dto';
-import { AuthGuard } from 'utils/guards/auth.guard';
 import { CurrentUser } from 'utils/decorators/current-user.decorator';
 import { type AuthenticatedUser } from 'utils/interfaces/jwt-payload.interface';
 import {
@@ -25,11 +23,14 @@ import {
 import { DocsErrors } from 'utils/decorators/docs-errors.decorator';
 import { User } from '../users/entities/user.entity';
 import { TokenResponseDto } from 'utils/interfaces/jwt-payload.interface';
+import { Public } from 'utils/decorators/public.decorator';
+
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  @Public()
   @Post('register')
   @DocsResponse('User registered successfully', User)
   @DocsErrors(400, 409)
@@ -37,6 +38,7 @@ export class AuthController {
     return this.authService.register(dto);
   }
 
+  @Public()
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @DocsResponse('User logged in successfully', User)
@@ -45,6 +47,7 @@ export class AuthController {
     return this.authService.login(dto);
   }
 
+  @Public()
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   @DocsResponse('Tokens refreshed successfully', TokenResponseDto)
@@ -55,7 +58,6 @@ export class AuthController {
 
   @Post('logout')
   @HttpCode(HttpStatus.OK)
-  @UseGuards(AuthGuard)
   @ApiBearerAuth('access-token')
   @DocsResponseNull('User logged out successfully')
   @DocsErrors(404)
@@ -65,7 +67,6 @@ export class AuthController {
   }
 
   @Get('me')
-  @UseGuards(AuthGuard)
   @ApiBearerAuth('access-token')
   @DocsResponse('Current user profile fetched successfully', User)
   @DocsErrors(404)

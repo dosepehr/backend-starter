@@ -122,8 +122,6 @@ export class HumanService {
 
     await this.humanRepository.recover(human);
 
-    await this.humanRepository.update(human.id, { recoveredAt: new Date() });
-
     await this.cacheService.del(cacheKey(id));
     return null;
   }
