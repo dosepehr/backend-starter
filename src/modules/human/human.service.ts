@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -15,6 +16,7 @@ import { PaginationDto } from 'utils/common/pagination/pagination.dto';
 import { OrderingService } from 'utils/common/ordering/ordering.service';
 import { SearchService } from 'utils/common/searching/search.service';
 import { CacheService } from 'utils/cache/cache.service';
+import { GlobalRepository } from 'utils/global/global.repository';
 
 const HUMAN_FILTERABLE_FIELDS: FilterableField<Human>[] = [
   { field: 'name', type: 'string' },
@@ -33,8 +35,8 @@ const cacheKey = (id: number) => `human:${id}`;
 @Injectable()
 export class HumanService {
   constructor(
-    @InjectRepository(Human)
-    private readonly humanRepository: Repository<Human>,
+    @Inject('HumanRepository')
+    private readonly humanRepository: GlobalRepository<Human>,
     private readonly filterService: FilterService,
     private readonly paginationService: PaginationService,
     private readonly orderingService: OrderingService,

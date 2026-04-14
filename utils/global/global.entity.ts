@@ -1,9 +1,7 @@
+import { User } from 'src/modules/users/entities/user.entity';
 import {
-  Column,
-  CreateDateColumn,
-  DeleteDateColumn,
-  PrimaryGeneratedColumn,
-  UpdateDateColumn,
+  Column, CreateDateColumn, DeleteDateColumn,
+  JoinColumn, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn,
 } from 'typeorm';
 
 export abstract class GlobalEntity {
@@ -18,18 +16,23 @@ export abstract class GlobalEntity {
 
   @DeleteDateColumn()
   deletedAt: Date | null;
+
   @Column({ type: 'timestamp', nullable: true })
   recoveredAt: Date | null;
 
-  @Column({ type: 'int', nullable: true, default: null })
-  createdBy: number;
+  @ManyToOne(() => User, { nullable: true, eager: false })
+  @JoinColumn({ name: 'createdBy' })
+  createdByUser?: User | null;
 
-  @Column({ type: 'int', nullable: true, default: null })
-  updatedBy: number;
+  @ManyToOne(() => User, { nullable: true, eager: false })
+  @JoinColumn({ name: 'updatedBy' })
+  updatedByUser?: User | null;
 
-  @Column({ type: 'int', nullable: true, default: null })
-  deletedBy: number;
+  @ManyToOne(() => User, { nullable: true, eager: false })
+  @JoinColumn({ name: 'deletedBy' })
+  deletedByUser?: User | null;
 
-  @Column({ type: 'int', nullable: true, default: null })
-  recoveredBy: number;
+  @ManyToOne(() => User, { nullable: true, eager: false })
+  @JoinColumn({ name: 'recoveredBy' })
+  recoveredByUser?: User | null;
 }

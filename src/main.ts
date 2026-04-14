@@ -13,6 +13,7 @@ import helmet from 'helmet';
 import compression from 'compression';
 import { ConfigService } from '@nestjs/config';
 import { TimeoutInterceptor } from 'utils/interceptors/timeout.interceptor';
+import { AuditTransformInterceptor } from 'utils/interceptors/audit-transform.interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -66,6 +67,7 @@ async function bootstrap() {
     new LoggingInterceptor(appLogger),
     new ResponseInterceptor(reflector),
     new TimeoutInterceptor(reflector, 30_000),
+    new AuditTransformInterceptor(),
   );
 
   // Catch and format all thrown exceptions into a standard error shape
