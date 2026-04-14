@@ -29,9 +29,11 @@ import { AuditInterceptor } from 'utils/interceptors/audit.interceptor';
 import { AuditSubscriber } from 'utils/subscribers/audit.subscriber';
 import { AuthGuard } from 'utils/guards/auth.guard';
 import { RolesGuard } from 'utils/guards/roles.guard';
+import { User } from './modules/users/entities/user.entity';
 
 @Module({
   imports: [
+    TypeOrmModule.forFeature([User]),
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',

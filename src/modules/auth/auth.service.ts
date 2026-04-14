@@ -124,17 +124,16 @@ export class AuthService {
       role: user.role,
     };
 
-    const secret = this.jwtSecret;
-
     const accessToken = await this.jwtService.signAsync(payload, {
-      secret,
+      secret: this.jwtSecret,
       expiresIn: this.ACCESS_TOKEN_TTL,
     });
     const refreshToken = uuidv4();
 
+
     await this.cacheService.set(
       `refresh:${refreshToken}`,
-      { userId: String(user.id), role: user.role },
+      { userId: String(user.id) },
       this.REFRESH_TOKEN_TTL,
     );
 

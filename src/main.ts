@@ -82,7 +82,7 @@ async function bootstrap() {
   // Swagger
   const documentFactory = () =>
     SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup('api/docs', app, documentFactory);
+  SwaggerModule.setup('docs', app, documentFactory);
 
   // Graceful Shutdown
   app.enableShutdownHooks();
