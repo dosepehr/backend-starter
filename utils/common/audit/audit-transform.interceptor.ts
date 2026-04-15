@@ -33,12 +33,12 @@ function transformAudit(data: any): any {
   }
 
   if (data && typeof data === 'object') {
-    // pagination: { items: [...], meta: {} }
+    // Pagination structure: { items: [...], meta: {} }
     if ('items' in data && Array.isArray(data.items)) {
       return { ...data, items: data.items.map(transformAudit) };
     }
 
-    // audit field داره → entity هست
+    // Has audit field → it's an entity
     const hasAuditField = AUDIT_FIELDS.some(
       (f) => `${f}ByUser` in data || `${f}By` in data,
     );
@@ -57,7 +57,7 @@ export class AuditTransformInterceptor implements NestInterceptor {
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     return next.handle().pipe(
       map((response) => {
-        // حالت ۱: ResponseInterceptor قبلاً wrap کرده → { status: true, data: ... }
+        // Case 1: ResponseInterceptor already wrapped → { status: true, data: ... }
         if (
           response !== null &&
           typeof response === 'object' &&
@@ -67,7 +67,7 @@ export class AuditTransformInterceptor implements NestInterceptor {
           return { ...response, data: transformAudit(response.data) };
         }
 
-        // حالت ۲: هنوز raw هست → مستقیم transform کن
+        // Case 2: Still raw → transform directly
         return transformAudit(response);
       }),
     );

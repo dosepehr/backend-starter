@@ -13,14 +13,8 @@ import { GlobalEntity } from 'utils/global/global.entity';
 import { User } from 'src/modules/users/entities/user.entity';
 
 function isGlobalEntity(entity: unknown): entity is GlobalEntity {
-  return (
-    typeof entity === 'object' &&
-    entity !== null &&
-    'createdByUser' in entity &&
-    'updatedByUser' in entity
-  );
+  return entity instanceof GlobalEntity;
 }
-
 @Injectable()
 @EventSubscriber()
 export class AuditSubscriber implements EntitySubscriberInterface {

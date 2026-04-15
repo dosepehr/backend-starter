@@ -13,14 +13,8 @@ export class AuditInterceptor implements NestInterceptor {
     const request = context.switchToHttp().getRequest();
     const userId = request.user ? parseInt(request.user.userId) : null;
 
-    return new Observable((observer) => {
-      auditContext.run({ userId }, () => {
-        next.handle().subscribe({
-          next: (val) => observer.next(val),
-          error: (err) => observer.error(err),
-          complete: () => observer.complete(),
-        });
-      });
-    });
+    return new Observable((observer) =>
+      auditContext.run({ userId }, () => next.handle().subscribe(observer)),
+    );
   }
 }
