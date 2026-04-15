@@ -5,7 +5,7 @@ import {
   CallHandler,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
-import { auditContext } from '../context/audit.context';
+import { auditContext } from './audit.context';
 
 @Injectable()
 export class AuditInterceptor implements NestInterceptor {

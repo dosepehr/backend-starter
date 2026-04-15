@@ -13,7 +13,7 @@ import helmet from 'helmet';
 import compression from 'compression';
 import { ConfigService } from '@nestjs/config';
 import { TimeoutInterceptor } from 'utils/interceptors/timeout.interceptor';
-import { AuditTransformInterceptor } from 'utils/interceptors/audit-transform.interceptor';
+import { AuditTransformInterceptor } from 'utils/common/audit/audit-transform.interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {

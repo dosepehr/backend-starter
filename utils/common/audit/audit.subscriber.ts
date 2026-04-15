@@ -8,7 +8,7 @@ import {
   DataSource,
 } from 'typeorm';
 import { Injectable } from '@nestjs/common';
-import { auditContext } from 'utils/context/audit.context';
+import { auditContext } from 'utils/common/audit/audit.context';
 import { GlobalEntity } from 'utils/global/global.entity';
 import { User } from 'src/modules/users/entities/user.entity';
 

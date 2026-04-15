@@ -25,11 +25,11 @@ import { CacheModule } from 'utils/cache/cache.module';
 import { DataSource } from 'typeorm';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
-import { AuditInterceptor } from 'utils/interceptors/audit.interceptor';
-import { AuditSubscriber } from 'utils/subscribers/audit.subscriber';
+import { AuditSubscriber } from 'utils/common/audit/audit.subscriber';
 import { AuthGuard } from 'utils/guards/auth.guard';
 import { RolesGuard } from 'utils/guards/roles.guard';
 import { User } from './modules/users/entities/user.entity';
+import { AuditInterceptor } from 'utils/common/audit/audit.interceptor';
 
 @Module({
   imports: [
