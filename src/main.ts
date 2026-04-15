@@ -63,11 +63,12 @@ async function bootstrap() {
   const reflector = app.get(Reflector);
 
   // Log every request/response and format all outgoing responses
+  // main.ts — ترتیب منطقی
   app.useGlobalInterceptors(
     new LoggingInterceptor(appLogger),
-    new ResponseInterceptor(reflector),
+    new AuditTransformInterceptor(), // ← قبل از Response ثبت شده
+    new ResponseInterceptor(reflector), // ← بعد اجرا میشه روی response
     new TimeoutInterceptor(reflector, 30_000),
-    new AuditTransformInterceptor(),
   );
 
   // Catch and format all thrown exceptions into a standard error shape

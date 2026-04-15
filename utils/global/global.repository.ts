@@ -1,3 +1,4 @@
+import { NotFoundException } from '@nestjs/common';
 import {
   Repository,
   FindManyOptions,
@@ -22,31 +23,53 @@ export class GlobalRepository<T extends ObjectLiteral> extends Repository<T> {
 
   private mergeRelations(
     options?: FindManyOptions<T> | FindOneOptions<T>,
+    withAudit = true,
   ): FindOptionsRelations<T> {
+    const base = withAudit ? AUDIT_RELATIONS : {};
     return {
-      ...AUDIT_RELATIONS,
+      ...base,
       ...((options?.relations as FindOptionsRelations<T>) ?? {}),
     } as FindOptionsRelations<T>;
   }
 
-  override find(options?: FindManyOptions<T>): Promise<T[]> {
+  override find(
+    options?: FindManyOptions<T> & { withAudit?: boolean },
+  ): Promise<T[]> {
+    const { withAudit = true, ...rest } = options ?? {};
     return super.find({
-      ...options,
-      relations: this.mergeRelations(options),
+      ...rest,
+      relations: this.mergeRelations(rest, withAudit),
     });
   }
 
-  override findOne(options: FindOneOptions<T>): Promise<T | null> {
+  override findOne(
+    options: FindOneOptions<T> & { withAudit?: boolean },
+  ): Promise<T | null> {
+    const { withAudit = true, ...rest } = options;
     return super.findOne({
-      ...options,
-      relations: this.mergeRelations(options),
+      ...rest,
+      relations: this.mergeRelations(rest, withAudit),
     });
   }
 
-  override findAndCount(options?: FindManyOptions<T>): Promise<[T[], number]> {
+  override findAndCount(
+    options?: FindManyOptions<T> & { withAudit?: boolean },
+  ): Promise<[T[], number]> {
+    const { withAudit = true, ...rest } = options ?? {};
     return super.findAndCount({
-      ...options,
-      relations: this.mergeRelations(options),
+      ...rest,
+      relations: this.mergeRelations(rest, withAudit),
     });
+  }
+  async safeRecover(id: number): Promise<T> {
+    const entity = await this.findOne({
+      where: { id } as any,
+      withDeleted: true,
+      withAudit: false,
+    });
+
+    if (!entity) throw new NotFoundException('Entity not found');
+
+    return this.recover(entity);
   }
 }

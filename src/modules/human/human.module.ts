@@ -7,7 +7,6 @@ import { FilterModule } from 'utils/common/filtering/filter.module';
 import { PaginationModule } from 'utils/common/pagination/pagination.module';
 import { OrderingModule } from 'utils/common/ordering/ordering.module';
 import { SearchModule } from 'utils/common/searching/search.module';
-import { AuthModule } from '../auth/auth.module';
 import { DataSource } from 'typeorm';
 import { GlobalRepository } from 'utils/global/global.repository';
 

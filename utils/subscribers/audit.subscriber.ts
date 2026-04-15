@@ -12,15 +12,26 @@ import { auditContext } from 'utils/context/audit.context';
 import { GlobalEntity } from 'utils/global/global.entity';
 import { User } from 'src/modules/users/entities/user.entity';
 
+function isGlobalEntity(entity: unknown): entity is GlobalEntity {
+  return (
+    typeof entity === 'object' &&
+    entity !== null &&
+    'createdByUser' in entity &&
+    'updatedByUser' in entity
+  );
+}
+
 @Injectable()
 @EventSubscriber()
 export class AuditSubscriber implements EntitySubscriberInterface {
   constructor(dataSource: DataSource) {
-    dataSource.subscribers.push(this);
+    if (!dataSource.subscribers.includes(this)) {
+      dataSource.subscribers.push(this);
+    }
   }
 
-  beforeInsert(event: InsertEvent<GlobalEntity>) {
-    if (!(event.entity instanceof GlobalEntity)) return;
+  beforeInsert(event: InsertEvent<unknown>) {
+    if (!isGlobalEntity(event.entity)) return;
     const ctx = auditContext.getStore();
     if (!ctx?.userId) return;
 
@@ -28,37 +39,28 @@ export class AuditSubscriber implements EntitySubscriberInterface {
     event.entity.updatedByUser = { id: ctx.userId } as User;
   }
 
-  beforeUpdate(event: UpdateEvent<GlobalEntity>) {
-    if (!(event.entity instanceof GlobalEntity)) return;
+  beforeUpdate(event: UpdateEvent<unknown>) {
+    if (!isGlobalEntity(event.entity)) return;
     const ctx = auditContext.getStore();
-    if (!ctx?.userId || !event.entity) return;
+    if (!ctx?.userId) return;
 
     event.entity.updatedByUser = { id: ctx.userId } as User;
   }
 
-  afterSoftRemove(event: SoftRemoveEvent<GlobalEntity>) {
-    if (!(event.entity instanceof GlobalEntity)) return;
+  beforeSoftRemove(event: SoftRemoveEvent<unknown>) {
+    if (!isGlobalEntity(event.entity)) return;
     const ctx = auditContext.getStore();
-    if (!ctx?.userId || !event.entity?.id) return;
+    if (!ctx?.userId) return;
 
-    event.manager
-      .createQueryBuilder()
-      .update(event.metadata.target)
-      .set({ deletedByUser: { id: ctx.userId } })
-      .where('id = :id', { id: event.entity.id })
-      .execute();
+    event.entity.deletedByUser = { id: ctx.userId } as User;
   }
 
-  afterRecover(event: RecoverEvent<GlobalEntity>) {
-    if (!(event.entity instanceof GlobalEntity)) return;
+  beforeRecover(event: RecoverEvent<unknown>) {
+    if (!isGlobalEntity(event.entity)) return;
     const ctx = auditContext.getStore();
-    if (!ctx?.userId || !event.entity?.id) return;
+    if (!ctx?.userId) return;
 
-    event.manager
-      .createQueryBuilder()
-      .update(event.metadata.target)
-      .set({ recoveredByUser: { id: ctx.userId }, recoveredAt: new Date() })
-      .where('id = :id', { id: event.entity.id })
-      .execute();
+    event.entity.recoveredByUser = { id: ctx.userId } as User;
+    event.entity.recoveredAt = new Date();
   }
 }
