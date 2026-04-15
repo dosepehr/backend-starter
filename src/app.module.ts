@@ -30,6 +30,7 @@ import { AuthGuard } from 'utils/guards/auth.guard';
 import { RolesGuard } from 'utils/guards/roles.guard';
 import { User } from './modules/users/entities/user.entity';
 import { AuditInterceptor } from 'utils/common/audit/audit.interceptor';
+import { FileModule } from './modules/file/file.module';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { AuditInterceptor } from 'utils/common/audit/audit.interceptor';
     CacheModule,
     UsersModule,
     AuthModule,
+    FileModule
   ],
   controllers: [AppController],
   providers: [

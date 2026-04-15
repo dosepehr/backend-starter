@@ -6,9 +6,8 @@ import {
 } from '@nestjs/common';
 import { CreateHumanDto } from './dto/create-human.dto';
 import { UpdateHumanDto } from './dto/update-human.dto';
-import { InjectRepository } from '@nestjs/typeorm';
 import { Human } from './entities/human.entity';
-import { FindOneOptions, Repository } from 'typeorm';
+import { FindOneOptions } from 'typeorm';
 import { FilterService } from 'utils/common/filtering/filter.service';
 import { FilterableField } from 'utils/interfaces/filterable-field.interface';
 import { PaginationService } from 'utils/common/pagination/pagination.service';
@@ -70,12 +69,15 @@ export class HumanService {
       { where, order, withDeleted },
     );
   }
-
   async findOne(id: number, options?: FindOneOptions<Human>) {
     if (options) {
       const human = await this.humanRepository.findOne({
-        where: { id },
         ...options,
+        where: { id, ...options.where },
+        relations: {
+          profile: true,
+          ...(options.relations ?? {}),
+        },
       });
       if (!human) throw new NotFoundException(`Human with ID ${id} not found`);
       return human;
@@ -84,7 +86,12 @@ export class HumanService {
     return this.cacheService.getOrSet<Human>(
       cacheKey(id),
       async () => {
-        const human = await this.humanRepository.findOne({ where: { id } });
+        const human = await this.humanRepository.findOne({
+          where: { id },
+          relations: {
+            profile: true,
+          },
+        });
         if (!human)
           throw new NotFoundException(`Human with ID ${id} not found`);
         return human;
@@ -133,5 +140,20 @@ export class HumanService {
     await this.humanRepository.remove(human);
     await this.cacheService.del(cacheKey(id));
     return null;
+  }
+  async updateAvatar(humanId: number, fileId: number): Promise<Human> {
+    await this.humanRepository.update(humanId, { profileId: fileId });
+
+    const human = await this.humanRepository.findOne({
+      where: { id: humanId },
+      withAudit: false,
+    });
+
+    if (!human) {
+      throw new NotFoundException(`Human with ID ${humanId} not found`);
+    }
+
+    await this.cacheService.del(cacheKey(humanId));
+    return human;
   }
 }

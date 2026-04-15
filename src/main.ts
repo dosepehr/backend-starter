@@ -14,11 +14,15 @@ import compression from 'compression';
 import { ConfigService } from '@nestjs/config';
 import { TimeoutInterceptor } from 'utils/interceptors/timeout.interceptor';
 import { AuditTransformInterceptor } from 'utils/common/audit/audit-transform.interceptor';
+import { join } from 'path';
+import * as express from 'express';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     bufferLogs: true,
   });
+  app.use('/uploads', express.static(join(process.cwd(), 'uploads')));
+
   const configService = app.get(ConfigService);
 
   // Logger
@@ -37,6 +41,7 @@ async function bootstrap() {
           connectSrc: [`'self'`],
         },
       },
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
     }),
   );
 
@@ -63,11 +68,11 @@ async function bootstrap() {
   const reflector = app.get(Reflector);
 
   // Log every request/response and format all outgoing responses
-  // main.ts — ترتیب منطقی
+
   app.useGlobalInterceptors(
     new LoggingInterceptor(appLogger),
-    new AuditTransformInterceptor(), // ← قبل از Response ثبت شده
-    new ResponseInterceptor(reflector), // ← بعد اجرا میشه روی response
+    new AuditTransformInterceptor(),
+    new ResponseInterceptor(reflector),
     new TimeoutInterceptor(reflector, 30_000),
   );
 

@@ -8,6 +8,8 @@ import {
   Delete,
   Query,
   ParseIntPipe,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
 import { HumanService } from './human.service';
 import { CreateHumanDto } from './dto/create-human.dto';
@@ -24,11 +26,17 @@ import { DocsErrors } from 'utils/decorators/docs-errors.decorator';
 import { Roles } from 'utils/decorators/roles.decorator';
 import { UserRole } from '../users/enums/user-role.enum';
 import { Public } from 'utils/decorators/public.decorator';
+import { FileService } from '../file/file.service';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { multerStorage } from 'config/multer.config';
 
 @ApiTags('Human')
 @Controller('human')
 export class HumanController {
-  constructor(private readonly humanService: HumanService) {}
+  constructor(
+    private readonly humanService: HumanService,
+    private readonly fileService: FileService,
+  ) {}
 
   @Public()
   @Get()
@@ -46,6 +54,24 @@ export class HumanController {
   @DocsErrors(404)
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.humanService.findOne(id);
+  }
+
+  @Roles(UserRole.ADMIN)
+  @Post(':id/avatar')
+  @UseInterceptors(
+    FileInterceptor('avatar', { storage: multerStorage('avatars') }),
+  )
+  async uploadAvatar(
+    @Param('id', ParseIntPipe) id: number,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    const uploaded = await this.fileService.upload(file, {
+      allowedMimes: ['image/jpeg', 'image/png', 'image/webp'],
+      maxSize: 5 * 1024 * 1024,
+      destination: 'avatars',
+    });
+
+    return this.humanService.updateAvatar(id, uploaded.id);
   }
 
   @Post()

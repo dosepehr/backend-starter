@@ -9,6 +9,7 @@ import { OrderingModule } from 'utils/common/ordering/ordering.module';
 import { SearchModule } from 'utils/common/searching/search.module';
 import { DataSource } from 'typeorm';
 import { GlobalRepository } from 'utils/global/global.repository';
+import { FileModule } from '../file/file.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { GlobalRepository } from 'utils/global/global.repository';
     FilterModule,
     OrderingModule,
     SearchModule,
+    FileModule,
   ],
   controllers: [HumanController],
   providers: [
