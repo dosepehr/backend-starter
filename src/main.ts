@@ -3,7 +3,11 @@ import { AppModule } from './app.module';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { SwaggerModule } from '@nestjs/swagger';
 import { swaggerConfig } from 'config/swagger.config';
-import { ValidationPipe, VersioningType } from '@nestjs/common';
+import {
+  BadRequestException,
+  ValidationPipe,
+  VersioningType,
+} from '@nestjs/common';
 import { ResponseInterceptor } from 'utils/interceptors/response.interceptor';
 import { HttpExceptionFilter } from 'utils/filters/http-exception.filter';
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
@@ -16,6 +20,7 @@ import { TimeoutInterceptor } from 'utils/interceptors/timeout.interceptor';
 import { AuditTransformInterceptor } from 'utils/common/audit/audit-transform.interceptor';
 import { join } from 'path';
 import * as express from 'express';
+import { CleanupFilesOnErrorInterceptor } from 'utils/interceptors/cleanup-files-on-error.interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -62,6 +67,19 @@ async function bootstrap() {
       whitelist: true,
       forbidNonWhitelisted: false,
       transform: true,
+      exceptionFactory: (errors) => {
+        const result = errors.reduce(
+          (acc, error) => {
+            acc[error.property] = Object.values(error.constraints ?? {});
+            return acc;
+          },
+          {} as Record<string, string[]>,
+        );
+        return new BadRequestException({
+          message: 'Validation failed',
+          errors: result,
+        });
+      },
     }),
   );
 
@@ -74,6 +92,7 @@ async function bootstrap() {
     new AuditTransformInterceptor(),
     new ResponseInterceptor(reflector),
     new TimeoutInterceptor(reflector, 30_000),
+    new CleanupFilesOnErrorInterceptor(),
   );
 
   // Catch and format all thrown exceptions into a standard error shape

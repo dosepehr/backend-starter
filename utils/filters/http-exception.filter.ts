@@ -21,7 +21,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
     const requestId = request['requestId'] as string | undefined;
 
-    // Handle Terminus HealthCheckError
+    // Handle Terminus HealthCheckError separately to strip internal details
     if (this.isHealthCheckError(exception)) {
       const exceptionResponse = (
         exception as HttpException
@@ -45,11 +45,20 @@ export class HttpExceptionFilter implements ExceptionFilter {
         message = exceptionResponse;
       } else if (typeof exceptionResponse === 'object') {
         const resp = exceptionResponse as Record<string, any>;
-        message = resp.message ?? message;
 
-        if (Array.isArray(resp.message)) {
+        if (resp.errors && typeof resp.errors === 'object') {
+          // Structured validation errors coming from exceptionFactory
+          message =
+            typeof resp.message === 'string'
+              ? resp.message
+              : 'Validation failed';
+          errors = resp.errors as Record<string, string[]>;
+        } else if (Array.isArray(resp.message)) {
+          // Fallback: parse flat message array if exceptionFactory is not configured
           message = 'Validation failed';
           errors = this.formatValidationErrors(resp.message as string[]);
+        } else {
+          message = typeof resp.message === 'string' ? resp.message : message;
         }
       }
     } else if (exception instanceof Error) {
@@ -90,10 +99,11 @@ export class HttpExceptionFilter implements ExceptionFilter {
     );
   }
 
+  // Fallback parser: groups flat validation messages by field name (first word)
   private formatValidationErrors(messages: string[]): Record<string, string[]> {
     return messages.reduce(
       (acc, msg) => {
-        const field = msg.split(' ')[0];
+        const field = msg.split(' ')[0].toLowerCase();
         if (!acc[field]) acc[field] = [];
         acc[field].push(msg);
         return acc;
