@@ -9,7 +9,7 @@ import { Repository } from 'typeorm';
 import { File } from './entities/file.entity';
 import { UploadOptions } from 'utils/interfaces/upload-options.interface';
 
-import sharp, { ResizeOptions } from 'sharp';
+import sharp from 'sharp';
 import * as fs from 'fs/promises';
 import { join } from 'path';
 import { AppLogger } from 'utils/common/logger/logger.service';
@@ -28,8 +28,8 @@ export class FileService {
   ): Promise<File> {
     this.validate(file, options);
 
-    if (options.resize) {
-      await this.resize(file, options.resize);
+    if (options.resize || options.convert) {
+      await this.process(file, options);
     }
 
     try {
@@ -49,15 +49,40 @@ export class FileService {
     return Promise.all(files.map((file) => this.upload(file, options)));
   }
 
-  private async resize(
+  private async process(
     file: Express.Multer.File,
-    options: ResizeOptions,
+    options: UploadOptions,
   ): Promise<void> {
-    const buffer = await sharp(file.path)
-      .resize(options.width, options.height, { fit: options.fit ?? 'cover' })
-      .toBuffer();
+    let pipeline = sharp(file.path);
 
-    await fs.writeFile(file.path, buffer);
+    if (options.resize) {
+      pipeline = pipeline.resize(options.resize.width, options.resize.height, {
+        fit: options.resize.fit ?? 'cover',
+      });
+    }
+
+    if (options.convert) {
+      const { format, quality } = options.convert;
+      pipeline = pipeline[format]({ quality: quality ?? 80 });
+    }
+
+    const buffer = await pipeline.toBuffer();
+
+    if (options.convert) {
+      const oldPath = file.path;
+      const newPath = oldPath.replace(/\.[^.]+$/, `.${options.convert.format}`);
+
+      await fs.writeFile(newPath, buffer);
+      file.path = newPath;
+
+      try {
+        await fs.unlink(oldPath);
+      } catch (error) {
+        this.logger.warn(`Failed to delete old file: ${oldPath}`);
+      }
+    } else {
+      await fs.writeFile(file.path, buffer);
+    }
   }
 
   private validate(file: Express.Multer.File, options: UploadOptions): void {
@@ -72,6 +97,7 @@ export class FileService {
       );
     }
   }
+
   async delete(id: number): Promise<void> {
     const file = await this.fileRepository.findOne({ where: { id } });
 
