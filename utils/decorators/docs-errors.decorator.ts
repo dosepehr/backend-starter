@@ -5,9 +5,10 @@ import {
   ApiUnauthorizedResponse,
   ApiForbiddenResponse,
   ApiConflictResponse,
+  ApiTooManyRequestsResponse,
 } from '@nestjs/swagger';
 
-// 401, 403, 404, 409
+// 401, 403, 404, 409, 429
 const SimpleErrorSchema = (messageExample: string) => ({
   schema: {
     properties: {
@@ -41,8 +42,7 @@ const ValidationErrorSchema = () => ({
   },
 });
 
-
-type ErrorCode = 400 | 401 | 403 | 404 | 409;
+type ErrorCode = 400 | 401 | 403 | 404 | 409 | 429;
 
 const errorDecorators: Record<ErrorCode, MethodDecorator> = {
   400: ApiBadRequestResponse({
@@ -69,8 +69,12 @@ const errorDecorators: Record<ErrorCode, MethodDecorator> = {
     description: 'Conflict',
     ...SimpleErrorSchema('Record already exists'),
   }),
-};
 
+  429: ApiTooManyRequestsResponse({
+    description: 'Too many requests',
+    ...SimpleErrorSchema('Too many requests. Please try again later.'),
+  }),
+};
 
 export type DocsErrorCode = ErrorCode;
 

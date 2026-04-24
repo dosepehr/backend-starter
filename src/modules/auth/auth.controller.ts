@@ -4,6 +4,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Patch,
   Post,
   Req,
 } from '@nestjs/common';
@@ -24,6 +25,15 @@ import { DocsErrors } from 'utils/decorators/docs-errors.decorator';
 import { User } from '../users/entities/user.entity';
 import { TokenResponseDto } from 'utils/interfaces/jwt-payload.interface';
 import { Public } from 'utils/decorators/public.decorator';
+import { SendOtpDto } from './dto/send-otp.dto';
+import { VerifyOtpLoginDto } from './dto/verify-otp-login.dto';
+import { VerifyOtpSignupDto } from './dto/verify-otp-signup.dto';
+import { ResponseMessage } from 'utils/decorators/response-message.decorator';
+import { Roles } from 'utils/decorators/roles.decorator';
+import { UserRole } from '../users/enums/user-role.enum';
+import { UpdateMeDto } from './dto/update-me.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -66,11 +76,61 @@ export class AuthController {
     return this.authService.logout(accessToken, dto.refreshToken);
   }
 
+  @Public()
+  @Post('otp/send')
+  @HttpCode(HttpStatus.OK)
+  @ResponseMessage('OTP sent successfully')
+  @DocsErrors(400, 429)
+  sendOtp(@Body() dto: SendOtpDto) {
+    return this.authService.sendOtp(dto.mobile);
+  }
+
+  @Public()
+  @Post('otp/verify/login')
+  @HttpCode(HttpStatus.OK)
+  @DocsResponse('Logged in successfully', TokenResponseDto)
+  @DocsErrors(400, 401, 404)
+  verifyOtpLogin(@Body() dto: VerifyOtpLoginDto) {
+    return this.authService.verifyOtpLogin(dto.mobile, dto.otp);
+  }
+
+  @Public()
+  @Post('otp/verify/signup')
+  @HttpCode(HttpStatus.CREATED)
+  @DocsResponse('User registered successfully', TokenResponseDto)
+  @DocsErrors(400, 401, 409)
+  verifyOtpSignup(@Body() dto: VerifyOtpSignupDto) {
+    return this.authService.verifyOtpSignup(dto);
+  }
   @Get('me')
   @ApiBearerAuth('access-token')
   @DocsResponse('Current user profile fetched successfully', User)
   @DocsErrors(404)
   getMe(@CurrentUser() user: AuthenticatedUser) {
     return this.authService.getMe(user.userId);
+  }
+
+  @Roles(UserRole.ADMIN, UserRole.USER)
+  @Patch('me')
+  updateMe(@Body() dto: UpdateMeDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.authService.updateMe(dto, user.userId);
+  }
+
+  @Public()
+  @Post('password/forgot')
+  @HttpCode(HttpStatus.OK)
+  @ResponseMessage('OTP sent successfully')
+  @DocsErrors(404, 429)
+  forgotPassword(@Body() dto: ForgotPasswordDto) {
+    return this.authService.forgotPassword(dto.mobile);
+  }
+
+  @Public()
+  @Post('password/reset')
+  @HttpCode(HttpStatus.OK)
+  @DocsResponse('Password reset successfully', TokenResponseDto)
+  @DocsErrors(401, 404)
+  resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.authService.resetPassword(dto.mobile, dto.otp, dto.newPassword);
   }
 }

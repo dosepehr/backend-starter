@@ -8,7 +8,7 @@ export interface JwtPayload {
 }
 
 export interface AuthenticatedUser {
-  userId: string;
+  userId: number;
   role: UserRole;
 }
 

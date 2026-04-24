@@ -1,7 +1,7 @@
 import {
+  IsMobilePhone,
   IsNotEmpty,
   IsString,
-  Matches,
   MaxLength,
   MinLength,
 } from 'class-validator';
@@ -9,9 +9,7 @@ import {
 export class RegisterDto {
   @IsNotEmpty()
   @IsString()
-  @Matches(/^09\d{9}$/, {
-    message: 'Mobile must be a valid Iranian number (09*********)',
-  })
+  @IsMobilePhone('fa-IR')
   mobile: string;
 
   @IsNotEmpty()
