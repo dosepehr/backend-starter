@@ -1,98 +1,118 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+ساختار خوبیه، ولی برای large scale چند تا چیز مهم کم داری:
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
-
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
-
-## Description
-
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
-
-## Project setup
+## ۱. Queue System (Bull/BullMQ)
+برای کارهای سنگین مثل:
+- پردازش تصاویر (resize, watermark)
+- ارسال ایمیل/SMS
+- Export گزارشات
+- Cleanup فایل‌های قدیمی
 
 ```bash
-$ npm install
+npm install @nestjs/bull bull
+npm install -D @types/bull
 ```
 
-## Compile and run the project
-
-```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+## ۲. Event System
+برای decoupling و maintainability:
+```typescript
+// utils/events/
+- user-created.event.ts
+- file-uploaded.event.ts
 ```
 
-## Run tests
+## ۳. Database
+- **Migration System**: TypeORM migrations برای version control دیتابیس
+- **Seeder**: برای test data
+- **Soft Delete Global**: که داری ولی باید consistent باشه
+- **Database Indexing**: برای performance
 
-```bash
-# unit tests
-$ npm run test
+## ۴. Storage
+- **S3/MinIO Integration**: به جای local storage
+- **CDN**: برای serve کردن فایل‌ها
+- **File Cleanup Job**: حذف فایل‌های orphan
 
-# e2e tests
-$ npm run test:e2e
+## ۵. Security
+- **Rate Limiting per User**: الان global داری
+- **CORS Config**: production-ready
+- **Input Sanitization**: XSS protection
+- **File Upload Security**: virus scan, magic number validation
+- **API Versioning**: `/api/v1/...`
 
-# test coverage
-$ npm run test:cov
+## ۶. Monitoring & Observability
+```typescript
+// utils/monitoring/
+- metrics.service.ts (Prometheus)
+- tracing.service.ts (OpenTelemetry)
+- alerting.service.ts
 ```
 
-## Deployment
+## ۷. Testing
+test/
+├── unit/
+├── integration/
+└── e2e/
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+## ۸. Documentation
+- **Architecture Decision Records (ADR)**
+- **API Changelog**
+- **Deployment Guide**
 
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+## ۹. DevOps
+.github/workflows/
+├── ci.yml
+├── cd.yml
+└── security-scan.yml
+
+docker/
+├── Dockerfile
+├── docker-compose.yml
+└── .dockerignore
+
+
+## ۱۰. Configuration Management
+- **Feature Flags**: برای A/B testing
+- **Environment-specific configs**: dev/staging/prod
+- **Secrets Management**: Vault یا AWS Secrets Manager
+
+## ۱۱. Background Jobs
+```typescript
+// utils/jobs/
+- cleanup.job.ts
+- backup.job.ts
+- report.job.ts
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+## ۱۲. Notification System
+```typescript
+// modules/notification/
+- email.service.ts
+- sms.service.ts
+- push.service.ts
+- notification.queue.ts
+```
 
-## Resources
+## ۱۳. Caching Strategy
+- **Multi-layer Cache**: Memory + Redis
+- **Cache Warming**
+- **Cache Invalidation Strategy**
 
-Check out a few resources that may come in handy when working with NestJS:
+## ۱۴. Error Handling
+- **Sentry Integration**
+- **Error Tracking Dashboard**
+- **Custom Error Codes**
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+## ۱۵. Performance
+- **Database Connection Pooling**
+- **Query Optimization**
+- **Response Compression**
+- **GraphQL** (اگه نیاز داری)
 
-## Support
+اولویت‌بندی من:
+1. **Queue System** (فوری برای file processing)
+2. **Migration System** (برای database versioning)
+3. **S3/MinIO** (برای production storage)
+4. **Monitoring** (Prometheus + Grafana)
+5. **Testing Infrastructure**
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+کدوم بخش رو می‌خوای شروع کنیم؟
