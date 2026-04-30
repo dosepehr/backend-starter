@@ -9,8 +9,6 @@ import { AppService } from './app.service';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { dbConfig } from 'config/db.config';
-import { HumanModule } from './modules/human/human.module';
-import { AnimalModule } from './modules/animal/animal.module';
 import { loggerConfig } from 'config/logger.config';
 import { WinstonModule } from 'nest-winston';
 import { LoggerModule } from 'utils/common/logger/logger.module';
@@ -44,13 +42,11 @@ import { FileModule } from './modules/file/file.module';
     LoggerModule,
     ThrottlerModule.forRoot(throttlerConfig),
     TypeOrmModule.forRootAsync(dbConfig),
-    HumanModule,
-    AnimalModule,
     HealthModule,
     CacheModule,
     UsersModule,
     AuthModule,
-    FileModule
+    FileModule,
   ],
   controllers: [AppController],
   providers: [
