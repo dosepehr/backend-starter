@@ -1,36 +1,45 @@
 import { applyDecorators, Type } from '@nestjs/common';
-import { ApiExtraModels, ApiOkResponse, getSchemaPath } from '@nestjs/swagger';
+import {
+  ApiExtraModels,
+  ApiOkResponse,
+  ApiCreatedResponse,
+  getSchemaPath,
+} from '@nestjs/swagger';
 import { ResponseMessage } from './response-message.decorator';
 
-// Use for endpoints that return a data object.
-export function DocsResponse<T>(message: string, model: Type<T>) {
-  return applyDecorators(
-    ResponseMessage(message),
-    ApiExtraModels(model),
-    ApiOkResponse({
-      description: message,
-      schema: {
-        properties: {
-          status: { type: 'boolean', example: true },
-          message: { type: 'string', example: message },
-          data: { $ref: getSchemaPath(model) },
-        },
-      },
-    }),
-  );
-}
+export function DocsResponse<T>(
+  message: string,
+  model?: Type<T>,
+  options?: {
+    status?: 200 | 201;
+    isArray?: boolean;
+  },
+) {
+  const status = options?.status ?? 200;
+  const isArray = options?.isArray ?? false;
 
-// Use for endpoints that return null (e.g. delete, soft-delete, recover).
-export function DocsResponseNull(message: string) {
+  const dataSchema = model
+    ? isArray
+      ? {
+          type: 'array',
+          items: { $ref: getSchemaPath(model) },
+        }
+      : { $ref: getSchemaPath(model) }
+    : { type: 'object', nullable: true, example: null };
+
+  const ResponseDecorator = status === 201 ? ApiCreatedResponse : ApiOkResponse;
+
   return applyDecorators(
     ResponseMessage(message),
-    ApiOkResponse({
+    ...(model ? [ApiExtraModels(model)] : []),
+    ResponseDecorator({
       description: message,
+      type: 'object',
       schema: {
         properties: {
           status: { type: 'boolean', example: true },
           message: { type: 'string', example: message },
-          data: { type: 'object', nullable: true, example: null },
+          data: dataSchema,
         },
       },
     }),

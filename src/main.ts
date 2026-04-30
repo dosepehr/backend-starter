@@ -107,9 +107,21 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
 
   // Swagger
-  const documentFactory = () =>
-    SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup('docs', app, documentFactory);
+  const document = SwaggerModule.createDocument(app, swaggerConfig);
+
+  document.security = [
+    {
+      'access-token': [],
+    },
+  ];
+
+  // Setup Swagger UI with better options
+  SwaggerModule.setup('docs', app, document, {
+    swaggerOptions: {
+      persistAuthorization: true,
+    },
+    customSiteTitle: 'Nest Starter API Docs',
+  });
 
   // Graceful Shutdown
   app.enableShutdownHooks();

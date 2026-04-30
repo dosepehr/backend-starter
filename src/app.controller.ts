@@ -21,7 +21,6 @@ export class AppController {
   @Get('admin-only')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
-  @ApiBearerAuth('access-token')
   @ResponseMessage('Welcome to Admin')
   adminRoute(@CurrentUser() user: AuthenticatedUser) {
     return { user: user };

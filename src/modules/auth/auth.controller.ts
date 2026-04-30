@@ -17,10 +17,7 @@ import { RefreshDto } from './dto/refresh.dto';
 import { LogoutDto } from './dto/logout.dto';
 import { CurrentUser } from 'utils/decorators/current-user.decorator';
 import { type AuthenticatedUser } from 'utils/interfaces/jwt-payload.interface';
-import {
-  DocsResponse,
-  DocsResponseNull,
-} from 'utils/decorators/docs-response.decorator';
+import { DocsResponse } from 'utils/decorators/docs-response.decorator';
 import { DocsErrors } from 'utils/decorators/docs-errors.decorator';
 import { User } from '../users/entities/user.entity';
 import { TokenResponseDto } from 'utils/interfaces/jwt-payload.interface';
@@ -68,8 +65,7 @@ export class AuthController {
 
   @Post('logout')
   @HttpCode(HttpStatus.OK)
-  @ApiBearerAuth('access-token')
-  @DocsResponseNull('User logged out successfully')
+  @DocsResponse('User logged out successfully')
   @DocsErrors(404)
   logout(@Req() req: Request, @Body() dto: LogoutDto) {
     const accessToken = req.headers.authorization!.split(' ')[1];
@@ -79,7 +75,7 @@ export class AuthController {
   @Public()
   @Post('otp/send')
   @HttpCode(HttpStatus.OK)
-  @ResponseMessage('OTP sent successfully')
+  @DocsResponse('OTP sent successfully')
   @DocsErrors(400, 429)
   sendOtp(@Body() dto: SendOtpDto) {
     return this.authService.sendOtp(dto.mobile);
@@ -97,13 +93,14 @@ export class AuthController {
   @Public()
   @Post('otp/verify/signup')
   @HttpCode(HttpStatus.CREATED)
-  @DocsResponse('User registered successfully', TokenResponseDto)
+  @DocsResponse('User registered successfully', TokenResponseDto, {
+    status: 201,
+  })
   @DocsErrors(400, 401, 409)
   verifyOtpSignup(@Body() dto: VerifyOtpSignupDto) {
     return this.authService.verifyOtpSignup(dto);
   }
   @Get('me')
-  @ApiBearerAuth('access-token')
   @DocsResponse('Current user profile fetched successfully', User)
   @DocsErrors(404)
   getMe(@CurrentUser() user: AuthenticatedUser) {
@@ -119,7 +116,7 @@ export class AuthController {
   @Public()
   @Post('password/forgot')
   @HttpCode(HttpStatus.OK)
-  @ResponseMessage('OTP sent successfully')
+  @DocsResponse('OTP sent successfully')
   @DocsErrors(404, 429)
   forgotPassword(@Body() dto: ForgotPasswordDto) {
     return this.authService.forgotPassword(dto.mobile);
