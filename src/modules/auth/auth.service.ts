@@ -19,6 +19,13 @@ import { compareHash, generateHash } from 'utils/funcs/password';
 import { VerifyOtpSignupDto } from './dto/verify-otp-signup.dto';
 import { TooManyRequestsException } from 'utils/exceptions/too-many-requests.exception';
 import { UpdateMeDto } from './dto/update-me.dto';
+import { SignupDetailsDto } from './dto/signup-details.dto';
+import { CompleteSignupDto } from './dto/complete-signup.dto';
+
+interface SignupData {
+  name: string;
+  password: string;
+}
 
 @Injectable()
 export class AuthService {
@@ -27,6 +34,7 @@ export class AuthService {
   private readonly jwtSecret: string;
 
   private readonly OTP_TTL = 2 * 60;
+  private readonly SIGNUP_DATA_TTL = 10 * 60;
   private readonly OTP_RATE_TTL = 10 * 60;
   private readonly OTP_RATE_LIMIT = 3;
 
@@ -146,6 +154,7 @@ export class AuthService {
 
     return { accessToken, refreshToken };
   }
+
   async sendOtp(
     mobile: string,
   ): Promise<{ action: 'login' | 'signup'; otp?: string }> {
@@ -198,6 +207,73 @@ export class AuthService {
     });
 
     await this.userRepository.save(user);
+    return this.generateTokenPair(user);
+  }
+
+  async saveSignupData(dto: SignupDetailsDto) {
+    const otpExists = await this.cacheService.get<string>(`otp:${dto.mobile}`);
+    if (!otpExists) {
+      throw new BadRequestException(
+        'OTP not found or expired. Please request a new OTP.',
+      );
+    }
+
+    const userExists = await this.userRepository.findOne({
+      where: [{ mobile: dto.mobile }, { name: dto.name }],
+    });
+
+    if (userExists) {
+      throw new ConflictException('Mobile or username already exists');
+    }
+
+    const signupData: SignupData = {
+      name: dto.name,
+      password: dto.password,
+    };
+
+    await this.cacheService.set(
+      `signup:${dto.mobile}`,
+      signupData,
+      this.SIGNUP_DATA_TTL,
+    );
+
+    return { message: 'Registration data saved successfully' };
+  }
+
+  async completeSignup(dto: CompleteSignupDto) {
+    const storedOtp = await this.cacheService.get<string>(`otp:${dto.mobile}`);
+    if (!storedOtp || storedOtp !== dto.otp) {
+      throw new UnauthorizedException('Invalid or expired OTP');
+    }
+
+    const signupData = await this.cacheService.get<SignupData>(
+      `signup:${dto.mobile}`,
+    );
+    if (!signupData) {
+      throw new NotFoundException(
+        'Registration data not found. Please complete step 2 again.',
+      );
+    }
+
+    const userExists = await this.userRepository.findOne({
+      where: [{ mobile: dto.mobile }, { name: signupData.name }],
+    });
+
+    if (userExists) {
+      throw new ConflictException('Mobile or username already exists');
+    }
+
+    const user = this.userRepository.create({
+      mobile: dto.mobile,
+      name: signupData.name,
+      password: await generateHash(signupData.password),
+    });
+
+    await this.userRepository.save(user);
+
+    await this.cacheService.del(`otp:${dto.mobile}`);
+    await this.cacheService.del(`signup:${dto.mobile}`);
+
     return this.generateTokenPair(user);
   }
 

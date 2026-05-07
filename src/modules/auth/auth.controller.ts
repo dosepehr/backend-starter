@@ -31,6 +31,8 @@ import { UserRole } from '../users/enums/user-role.enum';
 import { UpdateMeDto } from './dto/update-me.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { SignupDetailsDto } from './dto/signup-details.dto';
+import { CompleteSignupDto } from './dto/complete-signup.dto';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -100,6 +102,27 @@ export class AuthController {
   verifyOtpSignup(@Body() dto: VerifyOtpSignupDto) {
     return this.authService.verifyOtpSignup(dto);
   }
+
+  @Public()
+  @Post('signup/details')
+  @HttpCode(HttpStatus.OK)
+  @DocsResponse('Registration data saved successfully')
+  @DocsErrors(400, 409)
+  saveSignupDetails(@Body() dto: SignupDetailsDto) {
+    return this.authService.saveSignupData(dto);
+  }
+
+  @Public()
+  @Post('signup/complete')
+  @HttpCode(HttpStatus.CREATED)
+  @DocsResponse('User registered successfully', TokenResponseDto, {
+    status: 201,
+  })
+  @DocsErrors(400, 401, 404, 409)
+  completeSignup(@Body() dto: CompleteSignupDto) {
+    return this.authService.completeSignup(dto);
+  }
+
   @Get('me')
   @DocsResponse('Current user profile fetched successfully', User)
   @DocsErrors(404)
