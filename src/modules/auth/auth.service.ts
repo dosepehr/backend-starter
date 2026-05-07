@@ -10,13 +10,11 @@ import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
-import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { User } from '../users/entities/user.entity';
 import { CacheService } from 'utils/cache/cache.service';
 import { JwtPayload } from 'utils/interfaces/jwt-payload.interface';
 import { compareHash, generateHash } from 'utils/funcs/password';
-import { VerifyOtpSignupDto } from './dto/verify-otp-signup.dto';
 import { TooManyRequestsException } from 'utils/exceptions/too-many-requests.exception';
 import { UpdateMeDto } from './dto/update-me.dto';
 import { SignupDetailsDto } from './dto/signup-details.dto';
@@ -48,24 +46,6 @@ export class AuthService {
     this.jwtSecret = this.configService.getOrThrow<string>('JWT_SECRET');
   }
 
-  async register(dto: RegisterDto) {
-    const exists = await this.userRepository.findOne({
-      where: [{ mobile: dto.mobile }, { name: dto.name }],
-    });
-
-    if (exists) {
-      throw new ConflictException('Mobile or username already exists');
-    }
-
-    const user = this.userRepository.create({
-      ...dto,
-      password: await generateHash(dto.password),
-    });
-
-    await this.userRepository.save(user);
-
-    return this.generateTokenPair(user);
-  }
 
   async login(dto: LoginDto) {
     const user = await this.userRepository.findOne({
@@ -186,27 +166,6 @@ export class AuthService {
       throw new NotFoundException('User not found. Please sign up.');
     }
 
-    return this.generateTokenPair(user);
-  }
-
-  async verifyOtpSignup(dto: VerifyOtpSignupDto) {
-    await this.consumeOtp(dto.mobile, dto.otp);
-
-    const exists = await this.userRepository.findOne({
-      where: [{ mobile: dto.mobile }, { name: dto.name }],
-    });
-
-    if (exists) {
-      throw new ConflictException('Mobile or username already exists');
-    }
-
-    const user = this.userRepository.create({
-      mobile: dto.mobile,
-      name: dto.name,
-      password: await generateHash(dto.password),
-    });
-
-    await this.userRepository.save(user);
     return this.generateTokenPair(user);
   }
 

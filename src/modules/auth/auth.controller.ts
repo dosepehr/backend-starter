@@ -8,10 +8,9 @@ import {
   Post,
   Req,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import {  ApiTags } from '@nestjs/swagger';
 import { type Request } from 'express';
 import { AuthService } from './auth.service';
-import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { LogoutDto } from './dto/logout.dto';
@@ -24,8 +23,6 @@ import { TokenResponseDto } from 'utils/interfaces/jwt-payload.interface';
 import { Public } from 'utils/decorators/public.decorator';
 import { SendOtpDto } from './dto/send-otp.dto';
 import { VerifyOtpLoginDto } from './dto/verify-otp-login.dto';
-import { VerifyOtpSignupDto } from './dto/verify-otp-signup.dto';
-import { ResponseMessage } from 'utils/decorators/response-message.decorator';
 import { Roles } from 'utils/decorators/roles.decorator';
 import { UserRole } from '../users/enums/user-role.enum';
 import { UpdateMeDto } from './dto/update-me.dto';
@@ -38,14 +35,6 @@ import { CompleteSignupDto } from './dto/complete-signup.dto';
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
-
-  @Public()
-  @Post('register')
-  @DocsResponse('User registered successfully', User)
-  @DocsErrors(400, 409)
-  register(@Body() dto: RegisterDto) {
-    return this.authService.register(dto);
-  }
 
   @Public()
   @Post('login')
@@ -93,17 +82,6 @@ export class AuthController {
   }
 
   @Public()
-  @Post('otp/verify/signup')
-  @HttpCode(HttpStatus.CREATED)
-  @DocsResponse('User registered successfully', TokenResponseDto, {
-    status: 201,
-  })
-  @DocsErrors(400, 401, 409)
-  verifyOtpSignup(@Body() dto: VerifyOtpSignupDto) {
-    return this.authService.verifyOtpSignup(dto);
-  }
-
-  @Public()
   @Post('signup/details')
   @HttpCode(HttpStatus.OK)
   @DocsResponse('Registration data saved successfully')
@@ -113,7 +91,7 @@ export class AuthController {
   }
 
   @Public()
-  @Post('signup/complete')
+  @Post('otp/verify/signup')
   @HttpCode(HttpStatus.CREATED)
   @DocsResponse('User registered successfully', TokenResponseDto, {
     status: 201,
