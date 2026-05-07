@@ -134,7 +134,7 @@ async function bootstrap() {
 
   appLogger.log(`Environment : ${ENV}`, 'Bootstrap');
   appLogger.log(`App         : http://localhost:${PORT}`, 'Bootstrap');
-  appLogger.log(`Swagger     : http://localhost:${PORT}/api/docs`, 'Bootstrap');
+  appLogger.log(`Swagger     : http://localhost:${PORT}/docs`, 'Bootstrap');
 }
 
 bootstrap();

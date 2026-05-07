@@ -39,8 +39,7 @@ export class ResponseInterceptor<T> implements NestInterceptor<
         return {
           status: true,
           ...(message && { message }),
-          ...(response !== undefined &&
-            response !== null && { data: response }),
+          ...(response !== undefined && response !== null && { ...response }),
         } satisfies SuccessResponse<T>;
       }),
     );

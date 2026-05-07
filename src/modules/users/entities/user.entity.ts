@@ -1,7 +1,4 @@
-import {
-  Column,
-  Entity,
-} from 'typeorm';
+import { Column, Entity } from 'typeorm';
 import { UserRole } from '../enums/user-role.enum';
 import { GlobalEntity } from 'utils/global/global.entity';
 
@@ -13,7 +10,7 @@ export class User extends GlobalEntity {
   @Column({ length: 11, unique: true })
   mobile: string;
 
-  @Column()
+  @Column({ select: false })
   password: string;
 
   @Column({
