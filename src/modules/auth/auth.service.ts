@@ -25,6 +25,8 @@ interface SignupData {
   password: string;
 }
 
+type OtpType = 'login' | 'signup';
+
 @Injectable()
 export class AuthService {
   private readonly ACCESS_TOKEN_TTL = 15 * 60;
@@ -46,16 +48,175 @@ export class AuthService {
     this.jwtSecret = this.configService.getOrThrow<string>('JWT_SECRET');
   }
 
+  async checkMobile(mobile: string) {
+    const user = await this.userRepository.findOne({ where: { mobile } });
+
+    if (user) {
+      await this.checkOtpRateLimit(mobile);
+
+      const otp = this.generateOtp();
+      await this.cacheService.set(`otp:login:${mobile}`, otp, this.OTP_TTL);
+
+      await this.incrementOtpRate(mobile);
+
+      return {
+        action: 'login' as const,
+        message: 'User exists. OTP sent for login.',
+        otp,
+      };
+    }
+
+    return {
+      action: 'signup' as const,
+      message: 'User not found. Please signup.',
+    };
+  }
+
+  async resendOtp(mobile: string, type: OtpType) {
+    await this.checkOtpRateLimit(mobile);
+
+    if (type === 'login') {
+      const user = await this.userRepository.findOne({ where: { mobile } });
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+
+      const otp = this.generateOtp();
+      await this.cacheService.set(`otp:login:${mobile}`, otp, this.OTP_TTL);
+
+      await this.incrementOtpRate(mobile);
+
+      return { message: 'OTP resent successfully', otp };
+    }
+
+    if (type === 'signup') {
+      const signupData = await this.cacheService.get<SignupData>(
+        `signup:${mobile}`,
+      );
+
+      if (!signupData) {
+        throw new NotFoundException(
+          'Signup data not found. Please complete signup details first.',
+        );
+      }
+
+      const otp = this.generateOtp();
+      await this.cacheService.set(`otp:signup:${mobile}`, otp, this.OTP_TTL);
+
+      await this.incrementOtpRate(mobile);
+
+      return { message: 'OTP resent successfully', otp };
+    }
+
+    throw new BadRequestException('Invalid OTP type');
+  }
 
   async login(dto: LoginDto) {
-    const user = await this.userRepository.findOne({
-      where: [{ mobile: dto.identifier }, { name: dto.identifier }],
-      select: ['id', 'password', 'role'],
+    const user = await this.userRepository
+      .createQueryBuilder('user')
+      .where('user.mobile = :mobile', { mobile: dto.mobile })
+      .addSelect('user.password')
+      .getOne();
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (!(await compareHash(dto.password, user.password))) {
+      throw new UnauthorizedException('Invalid password');
+    }
+
+    return this.generateTokenPair(user);
+  }
+  async verifyOtpLogin(mobile: string, otp: string) {
+    const storedOtp = await this.cacheService.get<string>(
+      `otp:login:${mobile}`,
+    );
+
+    if (!storedOtp || storedOtp !== otp) {
+      throw new UnauthorizedException('Invalid or expired OTP');
+    }
+
+    const user = await this.userRepository.findOne({ where: { mobile } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    await this.cacheService.del(`otp:login:${mobile}`);
+
+    return this.generateTokenPair(user);
+  }
+
+  async saveSignupDetails(dto: SignupDetailsDto) {
+    const userExists = await this.userRepository.findOne({
+      where: [{ mobile: dto.mobile }, { name: dto.name }],
     });
 
-    if (!user || !(await compareHash(dto.password, user.password))) {
-      throw new UnauthorizedException('Invalid credentials');
+    if (userExists) {
+      throw new ConflictException('Mobile or username already exists');
     }
+
+    await this.checkOtpRateLimit(dto.mobile);
+
+    const signupData: SignupData = {
+      name: dto.name,
+      password: dto.password,
+    };
+
+    await this.cacheService.set(
+      `signup:${dto.mobile}`,
+      signupData,
+      this.SIGNUP_DATA_TTL,
+    );
+
+    const otp = this.generateOtp();
+    await this.cacheService.set(`otp:signup:${dto.mobile}`, otp, this.OTP_TTL);
+
+    await this.incrementOtpRate(dto.mobile);
+
+    return {
+      message: 'Registration data saved and OTP sent successfully',
+      otp,
+    };
+  }
+
+  async completeSignup(dto: CompleteSignupDto) {
+    const storedOtp = await this.cacheService.get<string>(
+      `otp:signup:${dto.mobile}`,
+    );
+
+    if (!storedOtp || storedOtp !== dto.otp) {
+      throw new UnauthorizedException('Invalid or expired OTP');
+    }
+
+    const signupData = await this.cacheService.get<SignupData>(
+      `signup:${dto.mobile}`,
+    );
+
+    if (!signupData) {
+      throw new NotFoundException(
+        'Registration data not found or expired. Please complete signup details again.',
+      );
+    }
+
+    const userExists = await this.userRepository.findOne({
+      where: [{ mobile: dto.mobile }, { name: signupData.name }],
+    });
+
+    if (userExists) {
+      throw new ConflictException('Mobile or username already exists');
+    }
+
+    const user = this.userRepository.create({
+      mobile: dto.mobile,
+      name: signupData.name,
+      password: await generateHash(signupData.password),
+    });
+
+    await this.userRepository.save(user);
+
+    await this.cacheService.del(`otp:signup:${dto.mobile}`);
+    await this.cacheService.del(`signup:${dto.mobile}`);
 
     return this.generateTokenPair(user);
   }
@@ -100,6 +261,8 @@ export class AuthService {
     }
 
     await this.cacheService.del(`refresh:${refreshToken}`);
+
+    return { message: 'Logged out successfully' };
   }
 
   async getMe(userId: number) {
@@ -114,133 +277,29 @@ export class AuthService {
     return user;
   }
 
-  private async generateTokenPair(user: User) {
-    const payload: JwtPayload = {
-      sub: String(user.id),
-      role: user.role,
-    };
+  async forgotPassword(mobile: string) {
+    const user = await this.userRepository.findOne({ where: { mobile } });
 
-    const accessToken = await this.jwtService.signAsync(payload, {
-      secret: this.jwtSecret,
-      expiresIn: this.ACCESS_TOKEN_TTL,
-    });
-    const refreshToken = uuidv4();
-
-    await this.cacheService.set(
-      `refresh:${refreshToken}`,
-      { userId: String(user.id) },
-      this.REFRESH_TOKEN_TTL,
-    );
-
-    return { accessToken, refreshToken };
-  }
-
-  async sendOtp(
-    mobile: string,
-  ): Promise<{ action: 'login' | 'signup'; otp?: string }> {
-    const rateKey = `otp:rate:${mobile}`;
-    const attempts = (await this.cacheService.get<number>(rateKey)) ?? 0;
-
-    if (attempts >= this.OTP_RATE_LIMIT) {
-      throw new TooManyRequestsException(
-        'Too many OTP requests. Try again in 10 minutes.',
-      );
+    if (!user) {
+      throw new NotFoundException('User not found');
     }
 
-    const user = await this.userRepository.findOne({ where: { mobile } });
-    const action = user ? 'login' : 'signup';
+    await this.checkOtpRateLimit(mobile);
 
     const otp = this.generateOtp();
-    await this.cacheService.set(`otp:${mobile}`, otp, this.OTP_TTL);
+    await this.cacheService.set(`otp:reset:${mobile}`, otp, this.OTP_TTL);
 
-    await this.cacheService.set(rateKey, attempts + 1, this.OTP_RATE_TTL);
+    await this.incrementOtpRate(mobile);
 
-    return { action, otp };
-  }
-
-  async verifyOtpLogin(mobile: string, otp: string) {
-    await this.consumeOtp(mobile, otp);
-
-    const user = await this.userRepository.findOne({ where: { mobile } });
-    if (!user) {
-      throw new NotFoundException('User not found. Please sign up.');
-    }
-
-    return this.generateTokenPair(user);
-  }
-
-  async saveSignupData(dto: SignupDetailsDto) {
-    const otpExists = await this.cacheService.get<string>(`otp:${dto.mobile}`);
-    if (!otpExists) {
-      throw new BadRequestException(
-        'OTP not found or expired. Please request a new OTP.',
-      );
-    }
-
-    const userExists = await this.userRepository.findOne({
-      where: [{ mobile: dto.mobile }, { name: dto.name }],
-    });
-
-    if (userExists) {
-      throw new ConflictException('Mobile or username already exists');
-    }
-
-    const signupData: SignupData = {
-      name: dto.name,
-      password: dto.password,
-    };
-
-    await this.cacheService.set(
-      `signup:${dto.mobile}`,
-      signupData,
-      this.SIGNUP_DATA_TTL,
-    );
-
-    return { message: 'Registration data saved successfully' };
-  }
-
-  async completeSignup(dto: CompleteSignupDto) {
-    const storedOtp = await this.cacheService.get<string>(`otp:${dto.mobile}`);
-    if (!storedOtp || storedOtp !== dto.otp) {
-      throw new UnauthorizedException('Invalid or expired OTP');
-    }
-
-    const signupData = await this.cacheService.get<SignupData>(
-      `signup:${dto.mobile}`,
-    );
-    if (!signupData) {
-      throw new NotFoundException(
-        'Registration data not found. Please complete step 2 again.',
-      );
-    }
-
-    const userExists = await this.userRepository.findOne({
-      where: [{ mobile: dto.mobile }, { name: signupData.name }],
-    });
-
-    if (userExists) {
-      throw new ConflictException('Mobile or username already exists');
-    }
-
-    const user = this.userRepository.create({
-      mobile: dto.mobile,
-      name: signupData.name,
-      password: await generateHash(signupData.password),
-    });
-
-    await this.userRepository.save(user);
-
-    await this.cacheService.del(`otp:${dto.mobile}`);
-    await this.cacheService.del(`signup:${dto.mobile}`);
-
-    return this.generateTokenPair(user);
+    return { message: 'OTP sent successfully', otp };
   }
 
   async updateMe(dto: UpdateMeDto, userId: number) {
-    const user = await this.userRepository.findOne({
-      where: { id: userId },
-      select: ['id', 'password', 'name', 'mobile', 'role'],
-    });
+    const user = await this.userRepository
+      .createQueryBuilder('user')
+      .where('user.id = :id', { id: userId })
+      .addSelect('user.password')
+      .getOne();
 
     if (!user) throw new NotFoundException('User not found');
 
@@ -251,7 +310,7 @@ export class AuthService {
         );
       }
 
-      if (dto.rePassword && dto.oldPassword !== dto.rePassword) {
+      if (dto.rePassword && dto.newPassword !== dto.rePassword) {
         throw new BadRequestException('Passwords do not match');
       }
 
@@ -278,29 +337,6 @@ export class AuthService {
     return result;
   }
 
-  async forgotPassword(mobile: string) {
-    const user = await this.userRepository.findOne({ where: { mobile } });
-
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-
-    const rateKey = `otp:rate:${mobile}`;
-    const attempts = (await this.cacheService.get<number>(rateKey)) ?? 0;
-
-    if (attempts >= this.OTP_RATE_LIMIT) {
-      throw new TooManyRequestsException(
-        'Too many OTP requests. Try again in 10 minutes.',
-      );
-    }
-
-    const otp = this.generateOtp();
-    await this.cacheService.set(`otp:reset:${mobile}`, otp, this.OTP_TTL);
-    await this.cacheService.set(rateKey, attempts + 1, this.OTP_RATE_TTL);
-
-    return { otp };
-  }
-
   async resetPassword(mobile: string, otp: string, newPassword: string) {
     const stored = await this.cacheService.get<string>(`otp:reset:${mobile}`);
 
@@ -308,10 +344,11 @@ export class AuthService {
       throw new UnauthorizedException('Invalid or expired OTP');
     }
 
-    const user = await this.userRepository.findOne({
-      where: { mobile },
-      select: ['id', 'password'],
-    });
+    const user = await this.userRepository
+      .createQueryBuilder('user')
+      .where('user.mobile = :mobile', { mobile })
+      .addSelect('user.password')
+      .getOne();
 
     if (!user) {
       throw new NotFoundException('User not found');
@@ -324,14 +361,42 @@ export class AuthService {
     return this.generateTokenPair(user);
   }
 
-  private async consumeOtp(mobile: string, otp: string): Promise<void> {
-    const stored = await this.cacheService.get<string>(`otp:${mobile}`);
+  private async generateTokenPair(user: User) {
+    const payload: JwtPayload = {
+      sub: String(user.id),
+      role: user.role,
+    };
 
-    if (!stored || stored !== otp) {
-      throw new UnauthorizedException('Invalid or expired OTP');
+    const accessToken = await this.jwtService.signAsync(payload, {
+      secret: this.jwtSecret,
+      expiresIn: this.ACCESS_TOKEN_TTL,
+    });
+    const refreshToken = uuidv4();
+
+    await this.cacheService.set(
+      `refresh:${refreshToken}`,
+      { userId: String(user.id) },
+      this.REFRESH_TOKEN_TTL,
+    );
+
+    return { accessToken, refreshToken };
+  }
+
+  private async checkOtpRateLimit(mobile: string): Promise<void> {
+    const rateKey = `otp:rate:${mobile}`;
+    const attempts = (await this.cacheService.get<number>(rateKey)) ?? 0;
+
+    if (attempts >= this.OTP_RATE_LIMIT) {
+      throw new TooManyRequestsException(
+        'Too many OTP requests. Try again in 10 minutes.',
+      );
     }
+  }
 
-    await this.cacheService.del(`otp:${mobile}`);
+  private async incrementOtpRate(mobile: string): Promise<void> {
+    const rateKey = `otp:rate:${mobile}`;
+    const attempts = (await this.cacheService.get<number>(rateKey)) ?? 0;
+    await this.cacheService.set(rateKey, attempts + 1, this.OTP_RATE_TTL);
   }
 
   private generateOtp(): string {

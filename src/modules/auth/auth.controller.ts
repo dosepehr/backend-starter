@@ -8,7 +8,7 @@ import {
   Post,
   Req,
 } from '@nestjs/common';
-import {  ApiTags } from '@nestjs/swagger';
+import { ApiTags } from '@nestjs/swagger';
 import { type Request } from 'express';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
@@ -21,7 +21,6 @@ import { DocsErrors } from 'utils/decorators/docs-errors.decorator';
 import { User } from '../users/entities/user.entity';
 import { TokenResponseDto } from 'utils/interfaces/jwt-payload.interface';
 import { Public } from 'utils/decorators/public.decorator';
-import { SendOtpDto } from './dto/send-otp.dto';
 import { VerifyOtpLoginDto } from './dto/verify-otp-login.dto';
 import { Roles } from 'utils/decorators/roles.decorator';
 import { UserRole } from '../users/enums/user-role.enum';
@@ -30,6 +29,8 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { SignupDetailsDto } from './dto/signup-details.dto';
 import { CompleteSignupDto } from './dto/complete-signup.dto';
+import { CheckMobileDto } from './dto/check-mobile.dto';
+import { ResendOtpDto } from './dto/resend-otp.dto';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -37,12 +38,59 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Public()
+  @Post('check-mobile')
+  @HttpCode(HttpStatus.OK)
+  @DocsResponse('Mobile checked successfully')
+  @DocsErrors(400, 429)
+  checkMobile(@Body() dto: CheckMobileDto) {
+    return this.authService.checkMobile(dto.mobile);
+  }
+
+  @Public()
+  @Post('otp/resend')
+  @HttpCode(HttpStatus.OK)
+  @DocsResponse('OTP resent successfully')
+  @DocsErrors(400, 404, 429)
+  resendOtp(@Body() dto: ResendOtpDto) {
+    return this.authService.resendOtp(dto.mobile, dto.type);
+  }
+
+  @Public()
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  @DocsResponse('User logged in successfully', User)
-  @DocsErrors(400, 401)
+  @DocsResponse('User logged in successfully', TokenResponseDto)
+  @DocsErrors(400, 401, 404)
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
+  }
+
+  @Public()
+  @Post('login/otp/verify')
+  @HttpCode(HttpStatus.OK)
+  @DocsResponse('Logged in successfully', TokenResponseDto)
+  @DocsErrors(400, 401, 404)
+  verifyOtpLogin(@Body() dto: VerifyOtpLoginDto) {
+    return this.authService.verifyOtpLogin(dto.mobile, dto.otp);
+  }
+
+  @Public()
+  @Post('signup/details')
+  @HttpCode(HttpStatus.OK)
+  @DocsResponse('Registration data saved and OTP sent successfully')
+  @DocsErrors(400, 409, 429)
+  saveSignupDetails(@Body() dto: SignupDetailsDto) {
+    return this.authService.saveSignupDetails(dto);
+  }
+
+  @Public()
+  @Post('signup/verify')
+  @HttpCode(HttpStatus.CREATED)
+  @DocsResponse('User registered successfully', TokenResponseDto, {
+    status: 201,
+  })
+  @DocsErrors(400, 401, 404, 409)
+  completeSignup(@Body() dto: CompleteSignupDto) {
+    return this.authService.completeSignup(dto);
   }
 
   @Public()
@@ -61,44 +109,6 @@ export class AuthController {
   logout(@Req() req: Request, @Body() dto: LogoutDto) {
     const accessToken = req.headers.authorization!.split(' ')[1];
     return this.authService.logout(accessToken, dto.refreshToken);
-  }
-
-  @Public()
-  @Post('otp/send')
-  @HttpCode(HttpStatus.OK)
-  @DocsResponse('OTP sent successfully')
-  @DocsErrors(400, 429)
-  sendOtp(@Body() dto: SendOtpDto) {
-    return this.authService.sendOtp(dto.mobile);
-  }
-
-  @Public()
-  @Post('otp/verify/login')
-  @HttpCode(HttpStatus.OK)
-  @DocsResponse('Logged in successfully', TokenResponseDto)
-  @DocsErrors(400, 401, 404)
-  verifyOtpLogin(@Body() dto: VerifyOtpLoginDto) {
-    return this.authService.verifyOtpLogin(dto.mobile, dto.otp);
-  }
-
-  @Public()
-  @Post('signup/details')
-  @HttpCode(HttpStatus.OK)
-  @DocsResponse('Registration data saved successfully')
-  @DocsErrors(400, 409)
-  saveSignupDetails(@Body() dto: SignupDetailsDto) {
-    return this.authService.saveSignupData(dto);
-  }
-
-  @Public()
-  @Post('otp/verify/signup')
-  @HttpCode(HttpStatus.CREATED)
-  @DocsResponse('User registered successfully', TokenResponseDto, {
-    status: 201,
-  })
-  @DocsErrors(400, 401, 404, 409)
-  completeSignup(@Body() dto: CompleteSignupDto) {
-    return this.authService.completeSignup(dto);
   }
 
   @Get('me')
