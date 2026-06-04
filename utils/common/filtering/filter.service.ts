@@ -30,6 +30,7 @@ const OPERATORS = [
 ] as const;
 
 type Operator = (typeof OPERATORS)[number];
+type FieldType = FilterableField<any>['type'];
 
 export interface FilterResult<T extends ObjectLiteral> {
   where: FindOptionsWhere<T> | undefined;
@@ -40,13 +41,12 @@ export interface FilterResult<T extends ObjectLiteral> {
 export class FilterService {
   private parseValue(
     value: string,
-    type: FilterableField<any>['type'],
+    type: FieldType,
     position?: 'start' | 'end',
-  ): any {
+  ): unknown {
     switch (type) {
       case 'date': {
         const isDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(value.trim());
-
         if (isDateOnly) {
           const suffix =
             position === 'end' ? 'T23:59:59.999Z' : 'T00:00:00.000Z';
@@ -54,24 +54,19 @@ export class FilterService {
           if (isNaN(date.getTime())) throw new Error(`Invalid date: ${value}`);
           return date;
         }
-
         const date = new Date(value);
         if (isNaN(date.getTime())) throw new Error(`Invalid date: ${value}`);
         return date;
       }
-
       case 'number': {
         const num = Number(value);
         if (isNaN(num)) throw new Error(`Invalid number: ${value}`);
         return num;
       }
-
       case 'boolean':
         if (value === 'true') return true;
         if (value === 'false') return false;
         throw new Error(`Invalid boolean: ${value}`);
-
-      case 'string':
       default:
         return value;
     }
@@ -80,51 +75,40 @@ export class FilterService {
   private applyOperator(
     operator: Operator,
     value: string,
-    type: FilterableField<any>['type'],
-  ): any {
+    type: FieldType,
+  ): unknown {
     switch (operator) {
       case '$ne':
         return Not(this.parseValue(value, type));
-
       case '$like':
         return Like(`%${value}%`);
-
       case '$ilike':
         return ILike(`%${value}%`);
-
       case '$gte':
         return MoreThanOrEqual(this.parseValue(value, type));
-
       case '$lte':
         return LessThanOrEqual(this.parseValue(value, type));
-
       case '$gt':
         return MoreThan(this.parseValue(value, type));
-
       case '$lt':
         return LessThan(this.parseValue(value, type));
-
       case '$in':
         return In(value.split(',').map((v) => this.parseValue(v.trim(), type)));
-
       case '$between': {
         const parts = value.split(',');
         if (parts.length !== 2)
           throw new Error(`$between requires exactly 2 values`);
-
         return Between(
           this.parseValue(parts[0].trim(), type, 'start'),
           this.parseValue(parts[1].trim(), type, 'end'),
         );
       }
-
-      case '$eq':
       default:
         return this.parseValue(value, type);
     }
   }
 
-  private transformNullableValue(
+  private resolveNullable(
     rawValue: string,
   ): 'isNull' | 'notNull' | undefined {
     if (rawValue === 'true') return 'notNull';
@@ -132,44 +116,16 @@ export class FilterService {
     return undefined;
   }
 
-  private transformValue(
-    value: string,
-    type: FilterableField<any>['type'],
-  ): any {
-    switch (type) {
-      case 'boolean':
-        if (value === 'true') return true;
-        if (value === 'false') return false;
-        return undefined;
-
-      case 'number': {
-        const num = Number(value);
-        return isNaN(num) ? undefined : num;
-      }
-
-      case 'date': {
-        const date = new Date(value);
-        return isNaN(date.getTime()) ? undefined : date;
-      }
-
-      case 'string':
-      default:
-        return value;
-    }
-  }
-
   private resolveMultiOperator(
     fieldValue: Record<string, string>,
-    type: FilterableField<any>['type'],
-  ): any {
-    const conditions: any[] = [];
+    type: FieldType,
+  ): unknown {
+    const conditions: unknown[] = [];
 
     for (const [op, val] of Object.entries(fieldValue)) {
       if (!OPERATORS.includes(op as Operator)) continue;
       try {
-        conditions.push(
-          this.applyOperator(op as Operator, val as string, type),
-        );
+        conditions.push(this.applyOperator(op as Operator, val, type));
       } catch (e) {
         console.warn(`[FilterService] ${(e as Error).message}`);
       }
@@ -177,14 +133,14 @@ export class FilterService {
 
     if (conditions.length === 0) return undefined;
     if (conditions.length === 1) return conditions[0];
-    return And(...conditions);
+    return And(...(conditions as Parameters<typeof And>));
   }
 
   buildQuery<T extends ObjectLiteral>(
-    query: Record<string, any>,
+    query: Record<string, unknown>,
     allowedFields: FilterableField<T>[],
   ): FilterResult<T> {
-    const where: Record<string, any> = {};
+    const where: Record<string, unknown> = {};
     let withDeleted = false;
 
     for (const fieldMeta of allowedFields) {
@@ -194,7 +150,10 @@ export class FilterService {
       if (rawValue === undefined) continue;
 
       if (typeof rawValue === 'object' && rawValue !== null) {
-        const result = this.resolveMultiOperator(rawValue, fieldMeta.type);
+        const result = this.resolveMultiOperator(
+          rawValue as Record<string, string>,
+          fieldMeta.type,
+        );
         if (result !== undefined) {
           where[fieldName] = result;
         }
@@ -202,7 +161,7 @@ export class FilterService {
       }
 
       if (fieldMeta.nullable) {
-        const nullableResult = this.transformNullableValue(rawValue);
+        const nullableResult = this.resolveNullable(rawValue as string);
         if (nullableResult === undefined) continue;
 
         if (nullableResult === 'notNull') {
@@ -214,9 +173,11 @@ export class FilterService {
         continue;
       }
 
-      const value = this.transformValue(rawValue, fieldMeta.type);
-      if (value !== undefined) {
+      try {
+        const value = this.parseValue(rawValue as string, fieldMeta.type);
         where[fieldName] = value;
+      } catch (e) {
+        console.warn(`[FilterService] ${(e as Error).message}`);
       }
     }
 
