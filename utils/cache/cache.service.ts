@@ -45,22 +45,14 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
 
     await this.client.connect();
   }
-  async disconnect(): Promise<void> {
-    if (this.client.status === 'end' || this.client.status === 'close') {
-      return;
-    }
-
+  async onModuleDestroy(): Promise<void> {
+    if (!this.client) return;
     try {
       await this.client.quit();
       this.logger.log('Redis connection closed gracefully', CacheService.name);
-    } catch (err) {
+    } catch {
       this.logger.warn('Redis was already closed', CacheService.name);
     }
-  }
-
-  async onModuleDestroy(): Promise<void> {
-    await this.client?.quit();
-    this.logger.log('Redis connection closed gracefully', CacheService.name);
   }
   async ping(): Promise<void> {
     const result = await this.client.ping();
