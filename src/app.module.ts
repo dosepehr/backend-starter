@@ -4,8 +4,6 @@ import {
   NestModule,
   OnApplicationShutdown,
 } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { dbConfig } from 'config/db.config';
@@ -26,13 +24,11 @@ import { UsersModule } from './modules/users/users.module';
 import { AuditSubscriber } from 'utils/common/audit/audit.subscriber';
 import { AuthGuard } from 'utils/guards/auth.guard';
 import { RolesGuard } from 'utils/guards/roles.guard';
-import { User } from './modules/users/entities/user.entity';
 import { AuditInterceptor } from 'utils/common/audit/audit.interceptor';
 import { FileModule } from './modules/file/file.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User]),
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
@@ -48,9 +44,7 @@ import { FileModule } from './modules/file/file.module';
     AuthModule,
     FileModule,
   ],
-  controllers: [AppController],
   providers: [
-    AppService,
     AuditSubscriber,
     {
       provide: APP_GUARD,
