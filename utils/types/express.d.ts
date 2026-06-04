@@ -1,7 +1,9 @@
-import { User } from 'src/users/entities/user.entity';
+import { AuthenticatedUser } from 'utils/interfaces/jwt-payload.interface';
 
 declare module 'express-serve-static-core' {
   interface Request {
-    user?: User;
+    user?: AuthenticatedUser;
+    requestId?: string;
+    startTime?: number;
   }
 }
