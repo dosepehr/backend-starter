@@ -39,6 +39,23 @@ class EnvironmentVariables {
 
   @IsString()
   DB_NAME: string;
+
+  @IsString()
+  JWT_SECRET: string;
+
+  @IsString()
+  ADMIN_SESSION_SECRET: string;
+
+  @IsString()
+  CORS_ORIGIN: string;
+
+  @IsString()
+  REDIS_HOST: string;
+
+  @IsInt()
+  @Min(1)
+  @Max(65535)
+  REDIS_PORT: number;
 }
 
 export function validateEnv(config: Record<string, unknown>) {

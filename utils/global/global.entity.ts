@@ -1,5 +1,6 @@
 import { User } from 'src/modules/users/entities/user.entity';
 import {
+  BaseEntity,
   Column,
   CreateDateColumn,
   DeleteDateColumn,
@@ -9,7 +10,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-export abstract class GlobalEntity {
+export abstract class GlobalEntity extends BaseEntity {
   @PrimaryGeneratedColumn()
   id: number;
 

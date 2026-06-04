@@ -14,6 +14,9 @@ export class RolesGuard implements CanActivate {
   constructor(private readonly reflector: Reflector) {}
 
   canActivate(context: ExecutionContext): boolean {
+    const request = context.switchToHttp().getRequest<{ path: string }>();
+    if (request.path.startsWith('/admin')) return true;
+
     const requiredRoles = this.reflector.getAllAndOverride<UserRole[]>(
       ROLES_KEY,
       [context.getHandler(), context.getClass()],

@@ -1,18 +1,13 @@
-import {
-  Entity,
-  Column,
-  PrimaryGeneratedColumn,
-  CreateDateColumn,
-} from 'typeorm';
+import { BaseEntity, Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity('files')
-export class File {
+export class File extends BaseEntity {
   @PrimaryGeneratedColumn()
   id: number;
 
   @Column()
   url: string;
 
-  @CreateDateColumn({ select: false })
+  @CreateDateColumn()
   createdAt: Date;
 }

@@ -10,7 +10,7 @@ import { dbConfig } from 'config/db.config';
 import { loggerConfig } from 'config/logger.config';
 import { WinstonModule } from 'nest-winston';
 import { LoggerModule } from 'utils/common/logger/logger.module';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { throttlerConfig } from 'config/throttler.config';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { HealthModule } from 'utils/common/health/health.module';
@@ -27,6 +27,8 @@ import { RolesGuard } from 'utils/guards/roles.guard';
 import { AuditInterceptor } from 'utils/common/audit/audit.interceptor';
 import { FileModule } from './modules/file/file.module';
 import { QueryModule } from 'utils/common/query/query.module';
+import { AdminModule } from './admin/admin.module';
+import { AppThrottlerGuard } from 'utils/guards/throttler.guard';
 
 @Module({
   imports: [
@@ -42,6 +44,7 @@ import { QueryModule } from 'utils/common/query/query.module';
     HealthModule,
     CacheModule,
     QueryModule,
+    AdminModule,
     UsersModule,
     AuthModule,
     FileModule,
@@ -50,7 +53,7 @@ import { QueryModule } from 'utils/common/query/query.module';
     AuditSubscriber,
     {
       provide: APP_GUARD,
-      useClass: ThrottlerGuard,
+      useClass: AppThrottlerGuard,
     },
     {
       provide: APP_GUARD,
