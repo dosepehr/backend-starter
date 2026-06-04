@@ -1,13 +1,8 @@
-import { IsString, IsNotEmpty, Matches, IsIn } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { IsIn, IsNotEmpty, IsString } from 'class-validator';
+import { MobileDto } from './mobile.dto';
 
-export class ResendOtpDto {
-  @ApiProperty({ example: '09123456789' })
-  @IsString()
-  @IsNotEmpty()
-  @Matches(/^09\d{9}$/, { message: 'Invalid mobile number format' })
-  mobile: string;
-
+export class ResendOtpDto extends MobileDto {
   @ApiProperty({ example: 'login', enum: ['login', 'signup'] })
   @IsString()
   @IsNotEmpty()

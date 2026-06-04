@@ -1,16 +1,10 @@
-import { IsMobilePhone, IsString, Length, Matches } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { IsString, Length } from 'class-validator';
+import { MobileDto } from './mobile.dto';
 
-export class VerifyOtpLoginDto {
-  @ApiProperty({ example: '09123456789' })
-  @IsString()
-  @Length(11, 11)
-  @IsMobilePhone('fa-IR')
-  mobile: string;
-
+export class VerifyOtpLoginDto extends MobileDto {
   @ApiProperty({ example: '123456' })
   @IsString()
   @Length(6, 6)
-  @Matches(/^[0-9]{6}$/, { message: 'otp must be 6 digits' })
   otp: string;
 }

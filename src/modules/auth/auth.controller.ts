@@ -12,8 +12,7 @@ import { ApiTags } from '@nestjs/swagger';
 import { type Request } from 'express';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
-import { RefreshDto } from './dto/refresh.dto';
-import { LogoutDto } from './dto/logout.dto';
+import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { CurrentUser } from 'utils/decorators/current-user.decorator';
 import { type AuthenticatedUser } from 'utils/interfaces/jwt-payload.interface';
 import { DocsResponse } from 'utils/decorators/docs-response.decorator';
@@ -40,7 +39,7 @@ export class AuthController {
   @Public()
   @Post('check-mobile')
   @HttpCode(HttpStatus.OK)
-  @DocsResponse('Mobile checked successfully')
+  @DocsResponse('auth.checkMobile')
   @DocsErrors(400, 429)
   checkMobile(@Body() dto: CheckMobileDto) {
     return this.authService.checkMobile(dto.mobile);
@@ -49,7 +48,7 @@ export class AuthController {
   @Public()
   @Post('otp/resend')
   @HttpCode(HttpStatus.OK)
-  @DocsResponse('OTP resent successfully')
+  @DocsResponse('auth.resendOtp')
   @DocsErrors(400, 404, 429)
   resendOtp(@Body() dto: ResendOtpDto) {
     return this.authService.resendOtp(dto.mobile, dto.type);
@@ -58,7 +57,7 @@ export class AuthController {
   @Public()
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  @DocsResponse('User logged in successfully', TokenResponseDto)
+  @DocsResponse('auth.login', TokenResponseDto)
   @DocsErrors(400, 401, 404)
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
@@ -67,7 +66,7 @@ export class AuthController {
   @Public()
   @Post('login/otp/verify')
   @HttpCode(HttpStatus.OK)
-  @DocsResponse('Logged in successfully', TokenResponseDto)
+  @DocsResponse('auth.verifyOtpLogin', TokenResponseDto)
   @DocsErrors(400, 401, 404)
   verifyOtpLogin(@Body() dto: VerifyOtpLoginDto) {
     return this.authService.verifyOtpLogin(dto.mobile, dto.otp);
@@ -76,7 +75,7 @@ export class AuthController {
   @Public()
   @Post('signup/details')
   @HttpCode(HttpStatus.OK)
-  @DocsResponse('Registration data saved and OTP sent successfully')
+  @DocsResponse('auth.saveSignupDetails')
   @DocsErrors(400, 409, 429)
   saveSignupDetails(@Body() dto: SignupDetailsDto) {
     return this.authService.saveSignupDetails(dto);
@@ -85,9 +84,7 @@ export class AuthController {
   @Public()
   @Post('signup/verify')
   @HttpCode(HttpStatus.CREATED)
-  @DocsResponse('User registered successfully', TokenResponseDto, {
-    status: 201,
-  })
+  @DocsResponse('auth.completeSignup', TokenResponseDto, { status: 201 })
   @DocsErrors(400, 401, 404, 409)
   completeSignup(@Body() dto: CompleteSignupDto) {
     return this.authService.completeSignup(dto);
@@ -96,23 +93,23 @@ export class AuthController {
   @Public()
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
-  @DocsResponse('Tokens refreshed successfully', TokenResponseDto)
+  @DocsResponse('auth.refresh', TokenResponseDto)
   @DocsErrors(400, 401)
-  refresh(@Body() dto: RefreshDto) {
+  refresh(@Body() dto: RefreshTokenDto) {
     return this.authService.refresh(dto.refreshToken);
   }
 
   @Post('logout')
   @HttpCode(HttpStatus.OK)
-  @DocsResponse('User logged out successfully')
+  @DocsResponse('auth.logout')
   @DocsErrors(404)
-  logout(@Req() req: Request, @Body() dto: LogoutDto) {
+  logout(@Req() req: Request, @Body() dto: RefreshTokenDto) {
     const accessToken = req.headers.authorization!.split(' ')[1];
     return this.authService.logout(accessToken, dto.refreshToken);
   }
 
   @Get('me')
-  @DocsResponse('Current user profile fetched successfully', User)
+  @DocsResponse('auth.getMe', User)
   @DocsErrors(404)
   getMe(@CurrentUser() user: AuthenticatedUser) {
     return this.authService.getMe(user.userId);
@@ -120,6 +117,7 @@ export class AuthController {
 
   @Roles(UserRole.ADMIN, UserRole.USER)
   @Patch('me')
+  @DocsResponse('auth.updateMe', User)
   updateMe(@Body() dto: UpdateMeDto, @CurrentUser() user: AuthenticatedUser) {
     return this.authService.updateMe(dto, user.userId);
   }
@@ -127,7 +125,7 @@ export class AuthController {
   @Public()
   @Post('password/forgot')
   @HttpCode(HttpStatus.OK)
-  @DocsResponse('OTP sent successfully')
+  @DocsResponse('auth.forgotPassword')
   @DocsErrors(404, 429)
   forgotPassword(@Body() dto: ForgotPasswordDto) {
     return this.authService.forgotPassword(dto.mobile);
@@ -136,7 +134,7 @@ export class AuthController {
   @Public()
   @Post('password/reset')
   @HttpCode(HttpStatus.OK)
-  @DocsResponse('Password reset successfully', TokenResponseDto)
+  @DocsResponse('auth.resetPassword', TokenResponseDto)
   @DocsErrors(401, 404)
   resetPassword(@Body() dto: ResetPasswordDto) {
     return this.authService.resetPassword(dto.mobile, dto.otp, dto.newPassword);
