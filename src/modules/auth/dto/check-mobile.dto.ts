@@ -1,10 +1,3 @@
-import { IsString, IsNotEmpty, Matches } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { MobileDto } from './mobile.dto';
 
-export class CheckMobileDto {
-  @ApiProperty({ example: '09123456789' })
-  @IsString()
-  @IsNotEmpty()
-  @Matches(/^09\d{9}$/, { message: 'Invalid mobile number format' })
-  mobile: string;
-}
+export class CheckMobileDto extends MobileDto {}

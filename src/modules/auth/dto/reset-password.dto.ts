@@ -1,11 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsMobilePhone, IsString, Length, MinLength } from 'class-validator';
+import { IsString, Length, MinLength } from 'class-validator';
+import { MobileDto } from './mobile.dto';
 
-export class ResetPasswordDto {
-  @ApiProperty({ example: '09123456789' })
-  @IsMobilePhone('fa-IR')
-  mobile: string;
-
+export class ResetPasswordDto extends MobileDto {
   @ApiProperty({ example: '123456' })
   @IsString()
   @Length(6, 6)

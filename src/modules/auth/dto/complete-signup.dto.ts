@@ -1,16 +1,10 @@
-import { IsString, IsNotEmpty, Matches, MinLength } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { IsString, Length } from 'class-validator';
+import { MobileDto } from './mobile.dto';
 
-export class CompleteSignupDto {
-  @ApiProperty({ example: '09123456789' })
-  @IsString()
-  @IsNotEmpty()
-  @Matches(/^09\d{9}$/, { message: 'Invalid mobile number format' })
-  mobile: string;
-
+export class CompleteSignupDto extends MobileDto {
   @ApiProperty({ example: '123456' })
   @IsString()
-  @IsNotEmpty()
-  @MinLength(6)
+  @Length(6, 6)
   otp: string;
 }
