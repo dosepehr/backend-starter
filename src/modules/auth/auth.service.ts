@@ -222,17 +222,16 @@ export class AuthService {
   }
 
   async refresh(refreshToken: string) {
-    const stored = await this.cacheService.get<{
-      userId: string;
-      role: string;
-    }>(`refresh:${refreshToken}`);
+    const stored = await this.cacheService.get<{ userId: string }>(
+      `refresh:${refreshToken}`,
+    );
 
     if (!stored) {
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
 
     const user = await this.userRepository.findOne({
-      where: { id: Number(stored.userId) },
+      where: { id: parseInt(stored.userId, 10) },
     });
 
     if (!user) {
@@ -265,9 +264,9 @@ export class AuthService {
     return { message: 'Logged out successfully' };
   }
 
-  async getMe(userId: number) {
+  async getMe(userId: string) {
     const user = await this.userRepository.findOne({
-      where: { id: userId },
+      where: { id: parseInt(userId, 10) },
     });
 
     if (!user) {
@@ -294,10 +293,10 @@ export class AuthService {
     return { message: 'OTP sent successfully', otp };
   }
 
-  async updateMe(dto: UpdateMeDto, userId: number) {
+  async updateMe(dto: UpdateMeDto, userId: string) {
     const user = await this.userRepository
       .createQueryBuilder('user')
-      .where('user.id = :id', { id: userId })
+      .where('user.id = :id', { id: parseInt(userId, 10) })
       .addSelect('user.password')
       .getOne();
 
