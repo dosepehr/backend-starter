@@ -27,7 +27,6 @@ export class ResponseInterceptor<T> implements NestInterceptor<
 
     return next.handle().pipe(
       map((response) => {
-        // if it is already formatted
         if (
           response !== null &&
           typeof response === 'object' &&
@@ -39,7 +38,7 @@ export class ResponseInterceptor<T> implements NestInterceptor<
         return {
           status: true,
           ...(message && { message }),
-          ...(response !== undefined && response !== null && { ...response }),
+          ...(response !== undefined && response !== null && { data: response }),
         } satisfies SuccessResponse<T>;
       }),
     );

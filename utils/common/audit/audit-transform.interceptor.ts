@@ -57,7 +57,6 @@ export class AuditTransformInterceptor implements NestInterceptor {
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     return next.handle().pipe(
       map((response) => {
-        // Case 1: ResponseInterceptor already wrapped → { status: true, data: ... }
         if (
           response !== null &&
           typeof response === 'object' &&
@@ -67,8 +66,7 @@ export class AuditTransformInterceptor implements NestInterceptor {
           return { ...response, data: transformAudit(response.data) };
         }
 
-        // Case 2: Still raw → transform directly
-        return transformAudit(response);
+        return response;
       }),
     );
   }

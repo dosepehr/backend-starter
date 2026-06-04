@@ -89,10 +89,10 @@ async function bootstrap() {
 
   app.useGlobalInterceptors(
     new LoggingInterceptor(appLogger),
-    new AuditTransformInterceptor(),
-    new ResponseInterceptor(reflector),
     new TimeoutInterceptor(reflector, 30_000),
     new CleanupFilesOnErrorInterceptor(),
+    new ResponseInterceptor(reflector),
+    new AuditTransformInterceptor(),
   );
 
   // Catch and format all thrown exceptions into a standard error shape
