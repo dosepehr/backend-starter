@@ -26,6 +26,7 @@ import { AuthGuard } from 'utils/guards/auth.guard';
 import { RolesGuard } from 'utils/guards/roles.guard';
 import { AuditInterceptor } from 'utils/common/audit/audit.interceptor';
 import { FileModule } from './modules/file/file.module';
+import { QueryModule } from 'utils/common/query/query.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { FileModule } from './modules/file/file.module';
     TypeOrmModule.forRootAsync(dbConfig),
     HealthModule,
     CacheModule,
+    QueryModule,
     UsersModule,
     AuthModule,
     FileModule,

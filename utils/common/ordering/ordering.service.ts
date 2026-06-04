@@ -1,11 +1,11 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { FindOptionsOrder } from 'typeorm';
+import { FindOptionsOrder, ObjectLiteral } from 'typeorm';
 
 @Injectable()
 export class OrderingService {
-  buildOrder<T>(
+  buildOrder<T extends ObjectLiteral>(
     ordering: string | undefined,
-    allowedFields: string[],
+    allowedFields: readonly string[],
   ): FindOptionsOrder<T> {
     if (!ordering) return {};
 
@@ -14,12 +14,10 @@ export class OrderingService {
 
     if (!allowedFields.includes(field)) {
       throw new BadRequestException(
-        `ordering field '${field}' is not allowed. Allowed fields: ${allowedFields.join(', ')}`,
+        `Invalid ordering field: '${field}'`,
       );
     }
 
-    return {
-      [field]: isDesc ? 'DESC' : 'ASC',
-    } as FindOptionsOrder<T>;
+    return { [field]: isDesc ? 'DESC' : 'ASC' } as FindOptionsOrder<T>;
   }
 }
