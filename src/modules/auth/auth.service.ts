@@ -9,6 +9,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { randomInt } from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { LoginDto } from './dto/login.dto';
 import { User } from '../users/entities/user.entity';
@@ -90,6 +91,11 @@ export class AuthService {
     }
 
     if (type === 'signup') {
+      const userExists = await this.userRepository.findOne({ where: { mobile } });
+      if (userExists) {
+        throw new ConflictException('Mobile is already registered');
+      }
+
       const signupData = await this.cacheService.get<SignupData>(
         `signup:${mobile}`,
       );
@@ -399,6 +405,6 @@ export class AuthService {
   }
 
   private generateOtp(): string {
-    return Math.floor(100000 + Math.random() * 900000).toString();
+    return randomInt(100000, 1000000).toString();
   }
 }
