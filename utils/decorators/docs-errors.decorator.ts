@@ -8,8 +8,23 @@ import {
   ApiTooManyRequestsResponse,
 } from '@nestjs/swagger';
 
-// 401, 403, 404, 409, 429
-const SimpleErrorSchema = (messageExample: string) => ({
+const ValidationErrorSchema = (description: string) => ({
+  description,
+  schema: {
+    properties: {
+      status: { type: 'boolean', example: false },
+      message: { type: 'string', example: 'Validation failed' },
+      errors: {
+        type: 'object',
+        additionalProperties: { type: 'array', items: { type: 'string' } },
+        example: { field: ['field must not be empty'] },
+      },
+    },
+  },
+});
+
+const SimpleErrorSchema = (description: string, messageExample: string) => ({
+  description,
   schema: {
     properties: {
       status: { type: 'boolean', example: false },
@@ -18,66 +33,55 @@ const SimpleErrorSchema = (messageExample: string) => ({
   },
 });
 
-// 400
-const ValidationErrorSchema = () => ({
-  schema: {
-    properties: {
-      status: { type: 'boolean', example: false },
-      message: { type: 'string', example: 'Validation failed' },
-      errors: {
-        type: 'object',
-        example: {
-          age: [
-            'age must be a number conforming to the specified constraints',
-            'age should not be empty',
-          ],
-          firstName: ['firstName must be a string'],
-        },
-        additionalProperties: {
-          type: 'array',
-          items: { type: 'string' },
-        },
-      },
-    },
-  },
-});
+export type DocsErrorCode = 400 | 401 | 403 | 404 | 409 | 429;
 
-type ErrorCode = 400 | 401 | 403 | 404 | 409 | 429;
+type ErrorEntry =
+  | { code: 400; description?: string }
+  | { code: 401; description?: string }
+  | { code: 403; description?: string }
+  | { code: 404; description?: string }
+  | { code: 409; description?: string }
+  | { code: 429; description?: string };
 
-const errorDecorators: Record<ErrorCode, MethodDecorator> = {
-  400: ApiBadRequestResponse({
-    description: 'Validation failed',
-    ...ValidationErrorSchema(),
-  }),
+function makeDecorator(entry: ErrorEntry): MethodDecorator {
+  const desc = entry.description;
 
-  401: ApiUnauthorizedResponse({
-    description: 'Unauthorized',
-    ...SimpleErrorSchema('Unauthorized'),
-  }),
+  switch (entry.code) {
+    case 400:
+      return ApiBadRequestResponse(
+        ValidationErrorSchema(desc ?? 'Validation failed'),
+      );
+    case 401:
+      return ApiUnauthorizedResponse(
+        SimpleErrorSchema(desc ?? 'Unauthorized', 'Unauthorized'),
+      );
+    case 403:
+      return ApiForbiddenResponse(
+        SimpleErrorSchema(desc ?? 'Forbidden', 'Forbidden resource'),
+      );
+    case 404:
+      return ApiNotFoundResponse(
+        SimpleErrorSchema(desc ?? 'Resource not found', desc ?? 'Resource not found'),
+      );
+    case 409:
+      return ApiConflictResponse(
+        SimpleErrorSchema(desc ?? 'Conflict', desc ?? 'Record already exists'),
+      );
+    case 429:
+      return ApiTooManyRequestsResponse(
+        SimpleErrorSchema(
+          desc ?? 'Too many requests',
+          desc ?? 'Too many requests. Please try again later.',
+        ),
+      );
+  }
+}
 
-  403: ApiForbiddenResponse({
-    description: 'Forbidden',
-    ...SimpleErrorSchema('Forbidden resource'),
-  }),
-
-  404: ApiNotFoundResponse({
-    description: 'Resource not found',
-    ...SimpleErrorSchema('Resource not found'),
-  }),
-
-  409: ApiConflictResponse({
-    description: 'Conflict',
-    ...SimpleErrorSchema('Record already exists'),
-  }),
-
-  429: ApiTooManyRequestsResponse({
-    description: 'Too many requests',
-    ...SimpleErrorSchema('Too many requests. Please try again later.'),
-  }),
-};
-
-export type DocsErrorCode = ErrorCode;
-
-export function DocsErrors(...codes: ErrorCode[]) {
-  return applyDecorators(...codes.map((code) => errorDecorators[code]));
+export function DocsErrors(
+  ...entries: (DocsErrorCode | ErrorEntry)[]
+): MethodDecorator & ClassDecorator {
+  const normalized: ErrorEntry[] = entries.map((e) =>
+    typeof e === 'number' ? { code: e } : e,
+  );
+  return applyDecorators(...normalized.map(makeDecorator));
 }

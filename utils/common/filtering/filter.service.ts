@@ -138,7 +138,7 @@ export class FilterService {
 
   buildQuery<T extends ObjectLiteral>(
     query: Record<string, unknown>,
-    allowedFields: FilterableField<T>[],
+    allowedFields: readonly FilterableField<T>[],
   ): FilterResult<T> {
     const where: Record<string, unknown> = {};
     let withDeleted = false;
