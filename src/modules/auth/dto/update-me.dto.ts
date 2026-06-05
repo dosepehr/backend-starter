@@ -1,5 +1,6 @@
-import { IsEmail, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsEmail, IsOptional, IsString, MaxLength, MinLength, ValidateIf } from 'class-validator';
 import { IsStrongPassword } from 'utils/decorators/is-strong-password.decorator';
+import { IsEqualTo } from 'utils/decorators/is-equal-to.decorator';
 
 export class UpdateMeDto {
   @IsOptional()
@@ -25,4 +26,9 @@ export class UpdateMeDto {
   @MaxLength(32)
   @IsStrongPassword()
   newPassword?: string;
+
+  @ValidateIf((o: UpdateMeDto) => !!o.newPassword)
+  @IsString()
+  @IsEqualTo('newPassword', { message: 'Passwords do not match' })
+  rePassword?: string;
 }

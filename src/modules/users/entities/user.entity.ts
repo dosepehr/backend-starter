@@ -14,7 +14,7 @@ export class User extends GlobalEntity {
   mobile: string;
 
   @Expose()
-  @Column({ length: 100, unique: true, nullable: true, default: null })
+  @Column({ type: 'varchar', length: 100, unique: true, nullable: true, default: null })
   email?: string | null;
 
   @Exclude()
