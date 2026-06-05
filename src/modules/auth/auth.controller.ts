@@ -10,7 +10,7 @@ import {
   Post,
   Req,
 } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { type Request } from 'express';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
@@ -34,6 +34,7 @@ import { CheckMobileDto } from './dto/check-mobile.dto';
 import { ResendOtpDto } from './dto/resend-otp.dto';
 
 @ApiTags('Auth')
+@ApiBearerAuth('access-token')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -41,7 +42,7 @@ export class AuthController {
   @Public()
   @Post('check-mobile')
   @HttpCode(HttpStatus.OK)
-  @DocsResponse('auth.checkMobile')
+  @DocsResponse('Mobile checked successfully')
   @DocsErrors(400, 429)
   checkMobile(@Body() dto: CheckMobileDto) {
     return this.authService.checkMobile(dto.mobile);
@@ -50,7 +51,7 @@ export class AuthController {
   @Public()
   @Post('otp/resend')
   @HttpCode(HttpStatus.OK)
-  @DocsResponse('auth.resendOtp')
+  @DocsResponse('OTP resent successfully')
   @DocsErrors(400, 404, 429)
   resendOtp(@Body() dto: ResendOtpDto) {
     return this.authService.resendOtp(dto.mobile, dto.type);
@@ -59,8 +60,8 @@ export class AuthController {
   @Public()
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  @DocsResponse('auth.login', TokenResponseDto)
-  @DocsErrors(400, 401, 404)
+  @DocsResponse('Logged in successfully', TokenResponseDto)
+  @DocsErrors(400, 401, 429)
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
   }
@@ -68,7 +69,7 @@ export class AuthController {
   @Public()
   @Post('login/otp/verify')
   @HttpCode(HttpStatus.OK)
-  @DocsResponse('auth.verifyOtpLogin', TokenResponseDto)
+  @DocsResponse('OTP verified, logged in successfully', TokenResponseDto)
   @DocsErrors(400, 401, 404)
   verifyOtpLogin(@Body() dto: VerifyOtpLoginDto) {
     return this.authService.verifyOtpLogin(dto.mobile, dto.otp);
@@ -77,7 +78,7 @@ export class AuthController {
   @Public()
   @Post('signup/details')
   @HttpCode(HttpStatus.OK)
-  @DocsResponse('auth.saveSignupDetails')
+  @DocsResponse('Signup details saved, OTP sent')
   @DocsErrors(400, 409, 429)
   saveSignupDetails(@Body() dto: SignupDetailsDto) {
     return this.authService.saveSignupDetails(dto);
@@ -86,7 +87,9 @@ export class AuthController {
   @Public()
   @Post('signup/verify')
   @HttpCode(HttpStatus.CREATED)
-  @DocsResponse('auth.completeSignup', TokenResponseDto, { status: 201 })
+  @DocsResponse('Account created successfully', TokenResponseDto, {
+    status: 201,
+  })
   @DocsErrors(400, 401, 404, 409)
   completeSignup(@Body() dto: CompleteSignupDto) {
     return this.authService.completeSignup(dto);
@@ -95,7 +98,7 @@ export class AuthController {
   @Public()
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
-  @DocsResponse('auth.refresh', TokenResponseDto)
+  @DocsResponse('Tokens refreshed successfully', TokenResponseDto)
   @DocsErrors(400, 401)
   refresh(@Body() dto: RefreshTokenDto) {
     return this.authService.refresh(dto.refreshToken);
@@ -103,22 +106,21 @@ export class AuthController {
 
   @Post('logout')
   @HttpCode(HttpStatus.OK)
-  @DocsResponse('auth.logout')
-  @DocsErrors(404)
+  @DocsResponse('Logged out successfully')
   logout(@Req() req: Request, @Body() dto: RefreshTokenDto) {
     const accessToken = req.headers.authorization!.split(' ')[1];
     return this.authService.logout(accessToken, dto.refreshToken);
   }
 
   @Get('sessions')
-  @DocsResponse('auth.getSessions')
+  @DocsResponse('Active sessions retrieved')
   getSessions(@CurrentUser() user: AuthenticatedUser) {
     return this.authService.getSessions(user.userId);
   }
 
   @Delete('sessions/:token')
   @HttpCode(HttpStatus.OK)
-  @DocsResponse('auth.revokeSession')
+  @DocsResponse('Session revoked successfully')
   @DocsErrors(404)
   revokeSession(
     @Param('token') token: string,
@@ -128,7 +130,7 @@ export class AuthController {
   }
 
   @Get('me')
-  @DocsResponse('auth.getMe', User)
+  @DocsResponse('Profile retrieved successfully', User)
   @DocsErrors(404)
   getMe(@CurrentUser() user: AuthenticatedUser) {
     return this.authService.getMe(user.userId);
@@ -136,7 +138,8 @@ export class AuthController {
 
   @Roles(UserRole.ADMIN, UserRole.USER)
   @Patch('me')
-  @DocsResponse('auth.updateMe', User)
+  @DocsResponse('Profile updated successfully', User)
+  @DocsErrors(400, 401, 409)
   updateMe(@Body() dto: UpdateMeDto, @CurrentUser() user: AuthenticatedUser) {
     return this.authService.updateMe(dto, user.userId);
   }
@@ -144,7 +147,7 @@ export class AuthController {
   @Public()
   @Post('password/forgot')
   @HttpCode(HttpStatus.OK)
-  @DocsResponse('auth.forgotPassword')
+  @DocsResponse('Password reset OTP sent successfully')
   @DocsErrors(404, 429)
   forgotPassword(@Body() dto: ForgotPasswordDto) {
     return this.authService.forgotPassword(dto.mobile);
@@ -153,7 +156,7 @@ export class AuthController {
   @Public()
   @Post('password/reset')
   @HttpCode(HttpStatus.OK)
-  @DocsResponse('auth.resetPassword', TokenResponseDto)
+  @DocsResponse('Password reset successfully', TokenResponseDto)
   @DocsErrors(401, 404)
   resetPassword(@Body() dto: ResetPasswordDto) {
     return this.authService.resetPassword(dto.mobile, dto.otp, dto.newPassword);
