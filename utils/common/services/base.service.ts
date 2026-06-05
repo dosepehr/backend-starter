@@ -1,7 +1,8 @@
-import { Repository, FindOptionsWhere, FindManyOptions } from 'typeorm';
+import { FindManyOptions, FindOptionsWhere } from 'typeorm';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { auditContext } from '../audit/audit.context';
 import { GlobalEntity } from 'utils/global/global.entity';
+import { GlobalRepository } from 'utils/global/global.repository';
 import { User } from 'src/modules/users/entities/user.entity';
 import { QueryService } from '../query/query.service';
 import { ListConfig } from 'utils/interfaces/list-config.interface';
@@ -12,7 +13,7 @@ type UserRef = Pick<User, 'id'>;
 
 export abstract class BaseService<T extends GlobalEntity> {
   constructor(
-    protected readonly repository: Repository<T>,
+    protected readonly repository: GlobalRepository<T>,
     protected readonly queryService: QueryService,
   ) {}
 
@@ -31,10 +32,8 @@ export abstract class BaseService<T extends GlobalEntity> {
     const where =
       typeof id === 'number' ? ({ id } as unknown as FindOptionsWhere<T>) : id;
 
-    const entity = await this.repository.findOne({ where });
-    if (!entity) {
-      throw new NotFoundException('Entity not found');
-    }
+    const entity = await this.repository.findOne({ where, withAudit: false });
+    if (!entity) throw new NotFoundException('Entity not found');
 
     const ctx = auditContext.getStore();
     if (ctx?.userId) {
@@ -43,21 +42,38 @@ export abstract class BaseService<T extends GlobalEntity> {
 
     await this.repository.softRemove(entity);
 
-    return this.repository.findOne({ where, withDeleted: true }) as Promise<T>;
+    return this.repository.findOne({
+      where,
+      withDeleted: true,
+      withAudit: false,
+    }) as Promise<T>;
+  }
+
+  async hardRemove(id: number | FindOptionsWhere<T>): Promise<void> {
+    const where =
+      typeof id === 'number' ? ({ id } as unknown as FindOptionsWhere<T>) : id;
+
+    const entity = await this.repository.findOne({
+      where,
+      withDeleted: true,
+      withAudit: false,
+    });
+    if (!entity) throw new NotFoundException('Entity not found');
+
+    await this.repository.remove(entity);
   }
 
   async recover(id: number | FindOptionsWhere<T>): Promise<T> {
     const where =
       typeof id === 'number' ? ({ id } as unknown as FindOptionsWhere<T>) : id;
 
-    const entity = await this.repository.findOne({ where, withDeleted: true });
-    if (!entity) {
-      throw new NotFoundException('Entity not found');
-    }
-
-    if (!entity.deletedAt) {
-      throw new BadRequestException('Entity is not deleted');
-    }
+    const entity = await this.repository.findOne({
+      where,
+      withDeleted: true,
+      withAudit: false,
+    });
+    if (!entity) throw new NotFoundException('Entity not found');
+    if (!entity.deletedAt) throw new BadRequestException('Entity is not deleted');
 
     const ctx = auditContext.getStore();
     if (ctx?.userId) {
@@ -69,6 +85,6 @@ export abstract class BaseService<T extends GlobalEntity> {
     await this.repository.recover(entity);
     await this.repository.save(entity);
 
-    return this.repository.findOne({ where }) as Promise<T>;
+    return this.repository.findOne({ where, withAudit: false }) as Promise<T>;
   }
 }
