@@ -23,12 +23,6 @@ export class UpdateMeDto {
   @IsString()
   @MinLength(8)
   @MaxLength(32)
-  rePassword?: string;
-
-  @IsOptional()
-  @IsString()
-  @MinLength(8)
-  @MaxLength(32)
   @IsStrongPassword()
   newPassword?: string;
 }
