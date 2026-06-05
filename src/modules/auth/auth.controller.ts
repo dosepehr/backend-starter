@@ -1,9 +1,11 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
+  Param,
   Patch,
   Post,
   Req,
@@ -106,6 +108,23 @@ export class AuthController {
   logout(@Req() req: Request, @Body() dto: RefreshTokenDto) {
     const accessToken = req.headers.authorization!.split(' ')[1];
     return this.authService.logout(accessToken, dto.refreshToken);
+  }
+
+  @Get('sessions')
+  @DocsResponse('auth.getSessions')
+  getSessions(@CurrentUser() user: AuthenticatedUser) {
+    return this.authService.getSessions(user.userId);
+  }
+
+  @Delete('sessions/:token')
+  @HttpCode(HttpStatus.OK)
+  @DocsResponse('auth.revokeSession')
+  @DocsErrors(404)
+  revokeSession(
+    @Param('token') token: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.authService.revokeSession(user.userId, token);
   }
 
   @Get('me')

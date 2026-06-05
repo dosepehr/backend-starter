@@ -40,6 +40,9 @@ export class AuthService {
   private readonly OTP_RATE_TTL = 10 * 60;
   private readonly OTP_RATE_LIMIT = 3;
 
+  private readonly LOGIN_FAIL_TTL = 15 * 60;
+  private readonly LOGIN_FAIL_LIMIT = 5;
+
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
@@ -119,20 +122,26 @@ export class AuthService {
   }
 
   async login(dto: LoginDto) {
+    const lockKey = `login:fail:${dto.mobile}`;
+    const failures = (await this.cacheService.get<number>(lockKey)) ?? 0;
+    if (failures >= this.LOGIN_FAIL_LIMIT) {
+      throw new TooManyRequestsException(
+        'Account temporarily locked. Try again in 15 minutes.',
+      );
+    }
+
     const user = await this.userRepository
       .createQueryBuilder('user')
       .where('user.mobile = :mobile', { mobile: dto.mobile })
       .addSelect('user.password')
       .getOne();
 
-    if (!user) {
-      throw new NotFoundException('User not found');
+    if (!user || !(await compareHash(dto.password, user.password))) {
+      await this.cacheService.set(lockKey, failures + 1, this.LOGIN_FAIL_TTL);
+      throw new UnauthorizedException('Invalid credentials');
     }
 
-    if (!(await compareHash(dto.password, user.password))) {
-      throw new UnauthorizedException('Invalid password');
-    }
-
+    await this.cacheService.del(lockKey);
     return this.generateTokenPair(user);
   }
   async verifyOtpLogin(mobile: string, otp: string) {
@@ -167,7 +176,7 @@ export class AuthService {
 
     const signupData: SignupData = {
       name: dto.name,
-      password: dto.password,
+      password: await generateHash(dto.password),
     };
 
     await this.cacheService.set(
@@ -217,7 +226,7 @@ export class AuthService {
     const user = this.userRepository.create({
       mobile: dto.mobile,
       name: signupData.name,
-      password: await generateHash(signupData.password),
+      password: signupData.password,
     });
 
     await this.userRepository.save(user);
@@ -279,6 +288,21 @@ export class AuthService {
     return { message: 'Logged out successfully' };
   }
 
+  async getSessions(userId: string) {
+    const tokens = await this.cacheService.sMembers(`sessions:${userId}`);
+    return { count: tokens.length, tokens };
+  }
+
+  async revokeSession(userId: string, token: string) {
+    const members = await this.cacheService.sMembers(`sessions:${userId}`);
+    if (!members.includes(token)) {
+      throw new NotFoundException('Session not found');
+    }
+    await this.cacheService.del(`refresh:${token}`);
+    await this.cacheService.sRem(`sessions:${userId}`, token);
+    return { message: 'Session revoked' };
+  }
+
   async getMe(userId: string) {
     const user = await this.userRepository.findOne({
       where: { id: parseInt(userId, 10) },
@@ -322,10 +346,6 @@ export class AuthService {
         throw new BadRequestException(
           'Both oldPassword and newPassword are required',
         );
-      }
-
-      if (dto.rePassword && dto.newPassword !== dto.rePassword) {
-        throw new BadRequestException('Passwords do not match');
       }
 
       const isMatch = await compareHash(dto.oldPassword, user.password);
