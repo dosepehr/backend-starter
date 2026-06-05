@@ -18,7 +18,7 @@ export class CleanupFilesOnErrorInterceptor implements NestInterceptor {
         const files: Express.Multer.File[] = request.files ?? [];
 
         await Promise.allSettled(
-          files.map((file) => fs.unlink(file.path).catch(() => {})),
+          files.map((file) => fs.unlink(file.path)),
         );
 
         throw error;

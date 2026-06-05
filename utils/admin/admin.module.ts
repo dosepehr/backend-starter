@@ -2,11 +2,12 @@ import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { getDataSourceToken } from '@nestjs/typeorm';
 import { BaseEntity, DataSource } from 'typeorm';
-import { User } from '../modules/users/entities/user.entity';
-import { UserRole } from '../modules/users/enums/user-role.enum';
+
 import { compareHash } from 'utils/funcs/password';
 import { UserResource } from './resources/user.resource';
 import { FileResource } from './resources/file.resource';
+import { User } from 'src/modules/users/entities/user.entity';
+import { UserRole } from 'src/modules/users/enums/user-role.enum';
 
 const adminSetup = Promise.all([
   import('@adminjs/nestjs'),
