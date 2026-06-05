@@ -15,10 +15,10 @@ export const UserResource: ResourceWithOptions = {
     filterProperties: ['name', 'mobile', 'role', 'createdAt'],
     properties: {
       password: { isVisible: false },
-      createdByUser: { isVisible: false },
-      updatedByUser: { isVisible: false },
-      deletedByUser: { isVisible: false },
-      recoveredByUser: { isVisible: false },
+      createdBy: { isVisible: false },
+      updatedBy: { isVisible: false },
+      deletedBy: { isVisible: false },
+      recoveredBy: { isVisible: false },
       recoveredAt: { isVisible: false },
       deletedAt: { isVisible: false },
       role: {

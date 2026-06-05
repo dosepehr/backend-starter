@@ -40,31 +40,31 @@ export abstract class GlobalEntity extends BaseEntity {
   @Column({ type: 'timestamp', nullable: true, default: null })
   recoveredAt: Date | null;
 
-  @Expose({ name: 'createdBy' })
+  @Expose()
   @Transform(({ value }) => (value ? { id: value.id, name: value.name } : null))
   @Type(() => AuditUserDto)
   @ManyToOne(() => User, { nullable: true, eager: false, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'createdBy' })
-  createdByUser?: User | null;
+  createdBy?: User | null;
 
-  @Expose({ name: 'updatedBy' })
+  @Expose()
   @Transform(({ value }) => (value ? { id: value.id, name: value.name } : null))
   @Type(() => AuditUserDto)
   @ManyToOne(() => User, { nullable: true, eager: false, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'updatedBy' })
-  updatedByUser?: User | null;
+  updatedBy?: User | null;
 
-  @Expose({ name: 'deletedBy' })
+  @Expose()
   @Transform(({ value }) => (value ? { id: value.id, name: value.name } : null))
   @Type(() => AuditUserDto)
   @ManyToOne(() => User, { nullable: true, eager: false, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'deletedBy' })
-  deletedByUser?: User | null;
+  deletedBy?: User | null;
 
-  @Expose({ name: 'recoveredBy' })
+  @Expose()
   @Transform(({ value }) => (value ? { id: value.id, name: value.name } : null))
   @Type(() => AuditUserDto)
   @ManyToOne(() => User, { nullable: true, eager: false, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'recoveredBy' })
-  recoveredByUser?: User | null;
+  recoveredBy?: User | null;
 }

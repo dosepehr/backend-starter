@@ -37,7 +37,7 @@ export abstract class BaseService<T extends GlobalEntity> {
 
     const ctx = auditContext.getStore();
     if (ctx?.userId) {
-      entity.deletedByUser = { id: ctx.userId } as UserRef as User;
+      entity.deletedBy = { id: ctx.userId } as UserRef as User;
     }
 
     await this.repository.softRemove(entity);
@@ -77,10 +77,10 @@ export abstract class BaseService<T extends GlobalEntity> {
 
     const ctx = auditContext.getStore();
     if (ctx?.userId) {
-      entity.recoveredByUser = { id: ctx.userId } as UserRef as User;
+      entity.recoveredBy = { id: ctx.userId } as UserRef as User;
     }
     entity.recoveredAt = new Date();
-    entity.deletedByUser = null;
+    entity.deletedBy = null;
 
     await this.repository.recover(entity);
     await this.repository.save(entity);

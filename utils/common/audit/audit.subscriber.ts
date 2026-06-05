@@ -15,6 +15,7 @@ import { User } from 'src/modules/users/entities/user.entity';
 function isGlobalEntity(entity: unknown): entity is GlobalEntity {
   return entity instanceof GlobalEntity;
 }
+
 @Injectable()
 @EventSubscriber()
 export class AuditSubscriber implements EntitySubscriberInterface {
@@ -29,8 +30,8 @@ export class AuditSubscriber implements EntitySubscriberInterface {
     const ctx = auditContext.getStore();
     if (!ctx?.userId) return;
 
-    event.entity.createdByUser = { id: ctx.userId } as User;
-    event.entity.updatedByUser = { id: ctx.userId } as User;
+    event.entity.createdBy = { id: ctx.userId } as User;
+    event.entity.updatedBy = { id: ctx.userId } as User;
   }
 
   beforeUpdate(event: UpdateEvent<unknown>) {
@@ -38,7 +39,7 @@ export class AuditSubscriber implements EntitySubscriberInterface {
     const ctx = auditContext.getStore();
     if (!ctx?.userId) return;
 
-    event.entity.updatedByUser = { id: ctx.userId } as User;
+    event.entity.updatedBy = { id: ctx.userId } as User;
   }
 
   beforeSoftRemove(event: SoftRemoveEvent<unknown>) {
@@ -46,7 +47,7 @@ export class AuditSubscriber implements EntitySubscriberInterface {
     const ctx = auditContext.getStore();
     if (!ctx?.userId) return;
 
-    event.entity.deletedByUser = { id: ctx.userId } as User;
+    event.entity.deletedBy = { id: ctx.userId } as User;
   }
 
   beforeRecover(event: RecoverEvent<unknown>) {
@@ -54,7 +55,7 @@ export class AuditSubscriber implements EntitySubscriberInterface {
     const ctx = auditContext.getStore();
     if (!ctx?.userId) return;
 
-    event.entity.recoveredByUser = { id: ctx.userId } as User;
+    event.entity.recoveredBy = { id: ctx.userId } as User;
     event.entity.recoveredAt = new Date();
   }
 }

@@ -10,10 +10,10 @@ import {
 } from 'typeorm';
 
 const AUDIT_RELATIONS = {
-  createdByUser: true,
-  updatedByUser: true,
-  deletedByUser: true,
-  recoveredByUser: true,
+  createdBy: true,
+  updatedBy: true,
+  deletedBy: true,
+  recoveredBy: true,
 };
 
 export class GlobalRepository<T extends ObjectLiteral> extends Repository<T> {
