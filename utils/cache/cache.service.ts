@@ -160,6 +160,24 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
     );
   }
 
+  // Redis Set operations
+
+  async sAdd(key: string, ...members: string[]): Promise<void> {
+    await this.client.sadd(key, ...members);
+  }
+
+  async sRem(key: string, ...members: string[]): Promise<void> {
+    await this.client.srem(key, ...members);
+  }
+
+  async sMembers(key: string): Promise<string[]> {
+    return this.client.smembers(key);
+  }
+
+  async sCard(key: string): Promise<number> {
+    return this.client.scard(key);
+  }
+
   // Internal Helpers
 
   private async scanKeys(pattern: string): Promise<string[]> {
