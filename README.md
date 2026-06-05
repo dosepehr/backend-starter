@@ -28,7 +28,7 @@ A production-ready NestJS starter built for large-scale applications. Ships with
 - Forgot password / reset password via OTP
 - Cryptographically secure OTP generation (`crypto.randomInt`)
 - OTP rate limiting (3 attempts per 10 minutes per mobile)
-- Profile update (name, password)
+- Profile update (name, email, password)
 
 ### Authorization
 - Role-based access control (`USER`, `ADMIN`)
@@ -41,8 +41,15 @@ A production-ready NestJS starter built for large-scale applications. Ships with
 - Powered by TypeORM `EntitySubscriber` + `AsyncLocalStorage` — no manual wiring per service
 - Soft delete and recovery support built into `GlobalEntity`
 
+### Session Management
+- Per-user session tracking via Redis Set (`sessions:{userId}`)
+- Hard cap of 5 concurrent sessions — oldest evicted automatically on overflow
+- Logout atomically blacklists the access token and purges the refresh token from the sessions set
+- Refresh token rotation: every `/refresh` call issues a new pair and invalidates the old refresh token
+
 ### Caching
 - Redis-backed `CacheService` with `get`, `set`, `del`, `getOrSet`, `delByPattern`, `exists`, `ttl`
+- Redis Set operations: `sAdd`, `sRem`, `sMembers`, `sCard`
 - Configurable key prefix and default TTL
 - Graceful disconnect on shutdown
 
@@ -55,8 +62,10 @@ A production-ready NestJS starter built for large-scale applications. Ships with
 ### Query Infrastructure
 - `QueryService` — single facade for filter + search + order + paginate
 - `BaseService` — base class for all services, exposes `findAll` using `ListConfig<T>`
+- `GlobalRepository<T>` — custom repository that auto-joins audit relations on demand
 - `ListConfig<T>` — type-safe definition of orderable, searchable, and filterable fields
-- `ListQueryDto` — single DTO for all list endpoints (`ordering`, `search`, `page`, `limit`)
+- `ListQueryDto` — single DTO for all list endpoints (`ordering`, `search`, `page`, `limit`, `withDeleted`)
+- `withDeleted` query param — explicit boolean to include soft-deleted records in any list endpoint
 
 ### Admin Panel
 - AdminJS at `/admin`, protected by session auth
@@ -108,7 +117,7 @@ utils/
 ├── filters/           # Global HTTP exception filter
 ├── middlewares/       # Request ID middleware
 ├── common/
-│   ├── audit/         # AuditSubscriber, AuditInterceptor, AuditTransformInterceptor
+│   ├── audit/         # AuditSubscriber, AuditInterceptor (sets AsyncLocalStorage context)
 │   ├── logger/        # AppLogger, LoggingInterceptor
 │   ├── health/        # Health controller and Redis indicator
 │   ├── query/         # QueryService, QueryModule
@@ -205,10 +214,10 @@ Below are features commonly required in large-scale production applications that
 
 | Feature | Why |
 |---|---|
+| **Permissions system** (CASL) | Role-based access (`USER` / `ADMIN`) doesn't scale to fine-grained resource ownership. CASL lets you define "this user can only edit their own posts". |
 | **Notifications module** | Push notifications (FCM/APNs), in-app notification feed with read/unread state. Required by almost every user-facing app. |
 | **Soft delete admin UI** | AdminJS currently shows only active records. A filter for deleted records and a restore action gives ops teams visibility. |
 | **Pagination cursor support** | Offset pagination breaks on large datasets with frequent inserts. Cursor-based pagination scales better for feeds and timelines. |
-| **API versioning strategy** | URI versioning is set up (`/api/v1`). Define a clear deprecation policy and add version headers so clients can detect breaking changes. |
 | **Request validation pipe hardening** | Add `forbidNonWhitelisted: true` and `forbidUnknownValues: true` globally to reject unknown fields in request bodies. |
 | **i18n / localization** (`nestjs-i18n`) | Error messages and responses in the user's language. Required once the app targets multiple locales. |
 | **Structured audit log storage** | Current audit writes to entity columns. A separate `audit_logs` table gives queryable history without polluting the main tables. |
@@ -228,7 +237,7 @@ Below are features commonly required in large-scale production applications that
 
 | Feature | Why |
 |---|---|
-| **Device / session management** | Let users see and revoke active sessions (like GitHub's "active sessions" page). |
+| **Device / session management UI** | Users can already be capped to 5 sessions. Expose a `/sessions` endpoint so they can list and revoke specific devices (like GitHub's "active sessions" page). |
 | **Account lockout after failed logins** | Prevent brute-force attacks on the password login endpoint. |
 | **CSRF protection** | Required when the admin panel or any session-based endpoint is accessed from a browser. |
 | **Input sanitization** | Strip HTML and script tags from string inputs to prevent stored XSS. |
