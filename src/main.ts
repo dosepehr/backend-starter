@@ -5,7 +5,6 @@ import { SwaggerModule } from '@nestjs/swagger';
 import { swaggerConfig } from 'config/swagger.config';
 import {
   BadRequestException,
-  ClassSerializerInterceptor,
   ValidationPipe,
   VersioningType,
 } from '@nestjs/common';
@@ -92,7 +91,6 @@ async function bootstrap() {
     new TimeoutInterceptor(reflector, 30_000),
     new CleanupFilesOnErrorInterceptor(),
     new ResponseInterceptor(reflector),
-    new ClassSerializerInterceptor(reflector, { excludeExtraneousValues: true }),
   );
 
   // Catch and format all thrown exceptions into a standard error shape
