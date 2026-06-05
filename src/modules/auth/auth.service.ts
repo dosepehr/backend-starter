@@ -338,8 +338,7 @@ export class AuthService {
 
     await this.userRepository.save(user);
 
-    const { password, ...result } = user;
-    return result;
+    return user;
   }
 
   async resetPassword(mobile: string, otp: string, newPassword: string) {
