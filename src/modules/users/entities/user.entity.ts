@@ -13,6 +13,10 @@ export class User extends GlobalEntity {
   @Column({ length: 11, unique: true })
   mobile: string;
 
+  @Expose()
+  @Column({ length: 100, unique: true, nullable: true, default: null })
+  email?: string | null;
+
   @Exclude()
   @Column({ select: false })
   password: string;

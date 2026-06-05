@@ -345,6 +345,18 @@ export class AuthService {
       user.name = dto.name;
     }
 
+    if (dto.email !== undefined) {
+      if (dto.email) {
+        const exists = await this.userRepository.findOne({
+          where: { email: dto.email },
+        });
+        if (exists && exists.id !== user.id) {
+          throw new ConflictException('Email already taken');
+        }
+      }
+      user.email = dto.email ?? null;
+    }
+
     await this.userRepository.save(user);
 
     return user;
