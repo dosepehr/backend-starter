@@ -9,15 +9,19 @@ export class OrderingService {
   ): FindOptionsOrder<T> {
     if (!ordering) return {};
 
-    const isDesc = ordering.startsWith('-');
-    const field = isDesc ? ordering.slice(1) : ordering;
+    return ordering
+      .split(',')
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .reduce((acc, part) => {
+        const isDesc = part.startsWith('-');
+        const field = isDesc ? part.slice(1) : part;
 
-    if (!allowedFields.includes(field)) {
-      throw new BadRequestException(
-        `Invalid ordering field: '${field}'`,
-      );
-    }
+        if (!allowedFields.includes(field)) {
+          throw new BadRequestException(`Invalid ordering field: '${field}'`);
+        }
 
-    return { [field]: isDesc ? 'DESC' : 'ASC' } as FindOptionsOrder<T>;
+        return { ...acc, [field]: isDesc ? 'DESC' : 'ASC' };
+      }, {} as FindOptionsOrder<T>);
   }
 }

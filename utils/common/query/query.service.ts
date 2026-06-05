@@ -37,15 +37,14 @@ export class QueryService {
       config.orderableFields,
     );
 
-    const relations = overrides.relations ?? config.defaultRelations;
     const withDeleted = query.withDeleted ?? filterWithDeleted;
 
     return this.paginationService.paginate(repository, query, {
+      relations: config.defaultRelations,
       ...overrides,
       where,
       order,
       withDeleted,
-      relations,
     });
   }
 }

@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { AppLogger } from 'utils/common/logger/logger.service';
 import {
   And,
   Between,
@@ -39,6 +40,7 @@ export interface FilterResult<T extends ObjectLiteral> {
 
 @Injectable()
 export class FilterService {
+  constructor(private readonly logger: AppLogger) {}
   private parseValue(
     value: string,
     type: FieldType,
@@ -127,7 +129,7 @@ export class FilterService {
       try {
         conditions.push(this.applyOperator(op as Operator, val, type));
       } catch (e) {
-        console.warn(`[FilterService] ${(e as Error).message}`);
+        this.logger.warn(`[FilterService] ${(e as Error).message}`, FilterService.name);
       }
     }
 
@@ -177,7 +179,7 @@ export class FilterService {
         const value = this.parseValue(rawValue as string, fieldMeta.type);
         where[fieldName] = value;
       } catch (e) {
-        console.warn(`[FilterService] ${(e as Error).message}`);
+        this.logger.warn(`[FilterService] ${(e as Error).message}`, FilterService.name);
       }
     }
 

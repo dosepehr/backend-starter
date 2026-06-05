@@ -27,8 +27,8 @@ import { RolesGuard } from 'utils/guards/roles.guard';
 import { AuditInterceptor } from 'utils/common/audit/audit.interceptor';
 import { FileModule } from './modules/file/file.module';
 import { QueryModule } from 'utils/common/query/query.module';
-import { AdminModule } from './admin/admin.module';
 import { AppThrottlerGuard } from 'utils/guards/throttler.guard';
+import { AdminModule } from 'utils/admin/admin.module';
 
 @Module({
   imports: [
