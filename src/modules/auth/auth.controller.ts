@@ -20,7 +20,7 @@ import { type AuthenticatedUser } from 'utils/interfaces/jwt-payload.interface';
 import { DocsResponse } from 'utils/decorators/docs-response.decorator';
 import { DocsErrors } from 'utils/decorators/docs-errors.decorator';
 import { User } from '../users/entities/user.entity';
-import { TokenResponseDto } from 'utils/interfaces/jwt-payload.interface';
+import { TokenResponseDto } from './dto/token-response.dto';
 import { Public } from 'utils/decorators/public.decorator';
 import { VerifyOtpLoginDto } from './dto/verify-otp-login.dto';
 import { Roles } from 'utils/decorators/roles.decorator';
