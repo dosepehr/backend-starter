@@ -32,6 +32,7 @@ type OtpType = 'login' | 'signup';
 export class AuthService {
   private readonly ACCESS_TOKEN_TTL = 15 * 60;
   private readonly REFRESH_TOKEN_TTL = 7 * 24 * 60 * 60;
+  private readonly MAX_SESSIONS_PER_USER = 5;
   private readonly jwtSecret: string;
 
   private readonly OTP_TTL = 2 * 60;
@@ -245,6 +246,7 @@ export class AuthService {
     }
 
     await this.cacheService.del(`refresh:${refreshToken}`);
+    await this.cacheService.sRem(`sessions:${stored.userId}`, refreshToken);
 
     return this.generateTokenPair(user);
   }
@@ -254,18 +256,25 @@ export class AuthService {
 
     const now = Math.floor(Date.now() / 1000);
     const remainingTtl = payload?.exp
-      ? payload.exp - now
+      ? Math.max(payload.exp - now, 0)
       : this.ACCESS_TOKEN_TTL;
 
-    if (remainingTtl > 0) {
-      await this.cacheService.set(
-        `blacklist:${accessToken}`,
-        '1',
-        remainingTtl,
-      );
-    }
+    // Always blacklist — even if already expired, a brief entry prevents
+    // any replay within the same second. Uses a floor of 1 so Redis accepts
+    // the TTL (0 would persist forever).
+    await this.cacheService.set(
+      `blacklist:${accessToken}`,
+      '1',
+      Math.max(remainingTtl, 1),
+    );
 
+    const stored = await this.cacheService.get<{ userId: string }>(
+      `refresh:${refreshToken}`,
+    );
     await this.cacheService.del(`refresh:${refreshToken}`);
+    if (stored?.userId) {
+      await this.cacheService.sRem(`sessions:${stored.userId}`, refreshToken);
+    }
 
     return { message: 'Logged out successfully' };
   }
@@ -376,12 +385,27 @@ export class AuthService {
       expiresIn: this.ACCESS_TOKEN_TTL,
     });
     const refreshToken = uuidv4();
+    const userId = String(user.id);
+    const sessionsKey = `sessions:${userId}`;
 
     await this.cacheService.set(
       `refresh:${refreshToken}`,
-      { userId: String(user.id) },
+      { userId },
       this.REFRESH_TOKEN_TTL,
     );
+
+    await this.cacheService.sAdd(sessionsKey, refreshToken);
+    await this.cacheService.expire(sessionsKey, this.REFRESH_TOKEN_TTL);
+
+    // Evict oldest sessions when cap is exceeded
+    const allTokens = await this.cacheService.sMembers(sessionsKey);
+    if (allTokens.length > this.MAX_SESSIONS_PER_USER) {
+      const toEvict = allTokens.slice(0, allTokens.length - this.MAX_SESSIONS_PER_USER);
+      for (const old of toEvict) {
+        await this.cacheService.del(`refresh:${old}`);
+      }
+      await this.cacheService.sRem(sessionsKey, ...toEvict);
+    }
 
     return { accessToken, refreshToken };
   }
