@@ -228,7 +228,6 @@ Below are features commonly required in large-scale production applications that
 
 | Feature | Why |
 |---|---|
-| **Refresh token rotation** | Issue a new refresh token on every refresh call and invalidate the old one. Limits the blast radius of a stolen refresh token. |
 | **Device / session management** | Let users see and revoke active sessions (like GitHub's "active sessions" page). |
 | **Account lockout after failed logins** | Prevent brute-force attacks on the password login endpoint. |
 | **CSRF protection** | Required when the admin panel or any session-based endpoint is accessed from a browser. |
