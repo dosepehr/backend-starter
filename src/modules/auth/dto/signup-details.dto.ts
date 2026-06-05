@@ -1,5 +1,6 @@
 import { IsString, IsNotEmpty, MinLength, Matches } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { IsStrongPassword } from 'utils/decorators/is-strong-password.decorator';
 
 export class SignupDetailsDto {
   @ApiProperty({ example: '09123456789' })
@@ -18,5 +19,6 @@ export class SignupDetailsDto {
   @IsString()
   @IsNotEmpty()
   @MinLength(8)
+  @IsStrongPassword()
   password: string;
 }

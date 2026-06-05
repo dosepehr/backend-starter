@@ -1,12 +1,5 @@
-import {
-  IsOptional,
-  IsString,
-  MaxLength,
-  MinLength,
-  registerDecorator,
-  ValidationOptions,
-  ValidationArguments,
-} from 'class-validator';
+import { IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsStrongPassword } from 'utils/decorators/is-strong-password.decorator';
 
 export class UpdateMeDto {
   @IsOptional()
@@ -31,5 +24,6 @@ export class UpdateMeDto {
   @IsString()
   @MinLength(8)
   @MaxLength(32)
+  @IsStrongPassword()
   newPassword?: string;
 }
