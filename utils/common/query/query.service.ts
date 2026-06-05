@@ -23,7 +23,7 @@ export class QueryService {
     config: ListConfig<T>,
     overrides: Omit<FindManyOptions<T>, 'where' | 'order' | 'skip' | 'take'> = {},
   ): Promise<SuccessResponse<T[]>> {
-    const { where: filterWhere, withDeleted } =
+    const { where: filterWhere, withDeleted: filterWithDeleted } =
       this.filterService.buildQuery<T>(query, config.filterableFields);
 
     const where = this.searchService.buildSearch<T>(
@@ -38,6 +38,7 @@ export class QueryService {
     );
 
     const relations = overrides.relations ?? config.defaultRelations;
+    const withDeleted = query.withDeleted ?? filterWithDeleted;
 
     return this.paginationService.paginate(repository, query, {
       ...overrides,
