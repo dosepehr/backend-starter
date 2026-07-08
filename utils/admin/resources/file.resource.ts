@@ -1,6 +1,6 @@
 import type { ActionContext, ResourceWithOptions } from 'adminjs' with { 'resolution-mode': 'import' };
+import { File } from 'src/modules/file/entities/file.entity';
 import { UserRole } from 'src/modules/users/enums/user-role.enum';
-
 
 const isAdmin = ({ currentAdmin }: ActionContext): boolean =>
   currentAdmin?.role === UserRole.ADMIN;
