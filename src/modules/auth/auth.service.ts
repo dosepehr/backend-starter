@@ -515,7 +515,9 @@ export class AuthService {
       await this.cacheService.sRem(sessionsKey, ...toEvict);
     }
 
-    return { accessToken, refreshToken };
+    const sessionExpiry = Math.floor(now / 1000) + this.ACCESS_TOKEN_TTL;
+
+    return { accessToken, refreshToken, sessionExpiry };
   }
 
   private async checkOtpRateLimit(mobile: string): Promise<void> {
