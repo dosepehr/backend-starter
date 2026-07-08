@@ -26,6 +26,19 @@ interface SignupData {
   password: string;
 }
 
+interface SessionMetadata {
+  userId: string;
+  ip: string;
+  userAgent: string;
+  createdAt: number;
+  lastUsedAt: number;
+}
+
+export interface RequestContext {
+  ip: string;
+  userAgent: string;
+}
+
 type OtpType = 'login' | 'signup';
 
 @Injectable()
@@ -67,6 +80,7 @@ export class AuthService {
       return {
         action: 'login' as const,
         message: 'User exists. OTP sent for login.',
+        // TODO: stop returning the OTP in the response body — deliver it via SMS only.
         otp,
       };
     }
@@ -91,6 +105,7 @@ export class AuthService {
 
       await this.incrementOtpRate(mobile);
 
+      // TODO: stop returning the OTP in the response body — deliver it via SMS only.
       return { message: 'OTP resent successfully', otp };
     }
 
@@ -115,13 +130,14 @@ export class AuthService {
 
       await this.incrementOtpRate(mobile);
 
+      // TODO: stop returning the OTP in the response body — deliver it via SMS only.
       return { message: 'OTP resent successfully', otp };
     }
 
     throw new BadRequestException('Invalid OTP type');
   }
 
-  async login(dto: LoginDto) {
+  async login(dto: LoginDto, context?: RequestContext) {
     const lockKey = `login:fail:${dto.mobile}`;
     const failures = (await this.cacheService.get<number>(lockKey)) ?? 0;
     if (failures >= this.LOGIN_FAIL_LIMIT) {
@@ -142,9 +158,9 @@ export class AuthService {
     }
 
     await this.cacheService.del(lockKey);
-    return this.generateTokenPair(user);
+    return this.generateTokenPair(user, context);
   }
-  async verifyOtpLogin(mobile: string, otp: string) {
+  async verifyOtpLogin(mobile: string, otp: string, context?: RequestContext) {
     const storedOtp = await this.cacheService.get<string>(
       `otp:login:${mobile}`,
     );
@@ -160,7 +176,7 @@ export class AuthService {
 
     await this.cacheService.del(`otp:login:${mobile}`);
 
-    return this.generateTokenPair(user);
+    return this.generateTokenPair(user, context);
   }
 
   async saveSignupDetails(dto: SignupDetailsDto) {
@@ -190,13 +206,14 @@ export class AuthService {
 
     await this.incrementOtpRate(dto.mobile);
 
+    // TODO: stop returning the OTP in the response body — deliver it via SMS only.
     return {
       message: 'Registration data saved and OTP sent successfully',
       otp,
     };
   }
 
-  async completeSignup(dto: CompleteSignupDto) {
+  async completeSignup(dto: CompleteSignupDto, context?: RequestContext) {
     const storedOtp = await this.cacheService.get<string>(
       `otp:signup:${dto.mobile}`,
     );
@@ -234,15 +251,23 @@ export class AuthService {
     await this.cacheService.del(`otp:signup:${dto.mobile}`);
     await this.cacheService.del(`signup:${dto.mobile}`);
 
-    return this.generateTokenPair(user);
+    return this.generateTokenPair(user, context);
   }
 
-  async refresh(refreshToken: string) {
-    const stored = await this.cacheService.get<{ userId: string }>(
+  async refresh(refreshToken: string, context?: RequestContext) {
+    const stored = await this.cacheService.get<SessionMetadata>(
       `refresh:${refreshToken}`,
     );
 
     if (!stored) {
+      const reusedUserId = await this.cacheService.get<string>(
+        `refresh:used:${refreshToken}`,
+      );
+      if (reusedUserId) {
+        // Token was already rotated away and is being presented again —
+        // treat as a stolen-token signal and kill the entire session family.
+        await this.revokeAllSessions(reusedUserId);
+      }
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
 
@@ -256,8 +281,23 @@ export class AuthService {
 
     await this.cacheService.del(`refresh:${refreshToken}`);
     await this.cacheService.sRem(`sessions:${stored.userId}`, refreshToken);
+    // Tombstone the consumed token so a replay can be detected after rotation.
+    await this.cacheService.set(
+      `refresh:used:${refreshToken}`,
+      stored.userId,
+      this.REFRESH_TOKEN_TTL,
+    );
 
-    return this.generateTokenPair(user);
+    return this.generateTokenPair(user, context);
+  }
+
+  private async revokeAllSessions(userId: string): Promise<void> {
+    const sessionsKey = `sessions:${userId}`;
+    const tokens = await this.cacheService.sMembers(sessionsKey);
+    for (const token of tokens) {
+      await this.cacheService.del(`refresh:${token}`);
+    }
+    await this.cacheService.del(sessionsKey);
   }
 
   async logout(accessToken: string, refreshToken: string) {
@@ -290,7 +330,27 @@ export class AuthService {
 
   async getSessions(userId: string) {
     const tokens = await this.cacheService.sMembers(`sessions:${userId}`);
-    return { count: tokens.length, tokens };
+
+    const sessions = await Promise.all(
+      tokens.map(async (token) => {
+        const metadata = await this.cacheService.get<SessionMetadata>(
+          `refresh:${token}`,
+        );
+        return {
+          token,
+          ip: metadata?.ip ?? 'unknown',
+          userAgent: metadata?.userAgent ?? 'unknown',
+          createdAt: metadata?.createdAt
+            ? new Date(metadata.createdAt).toISOString()
+            : null,
+          lastUsedAt: metadata?.lastUsedAt
+            ? new Date(metadata.lastUsedAt).toISOString()
+            : null,
+        };
+      }),
+    );
+
+    return { count: sessions.length, sessions };
   }
 
   async revokeSession(userId: string, token: string) {
@@ -329,6 +389,7 @@ export class AuthService {
 
     await this.incrementOtpRate(mobile);
 
+    // TODO: stop returning the OTP in the response body — deliver it via SMS only.
     return { message: 'OTP sent successfully', otp };
   }
 
@@ -382,7 +443,12 @@ export class AuthService {
     return user;
   }
 
-  async resetPassword(mobile: string, otp: string, newPassword: string) {
+  async resetPassword(
+    mobile: string,
+    otp: string,
+    newPassword: string,
+    context?: RequestContext,
+  ) {
     const stored = await this.cacheService.get<string>(`otp:reset:${mobile}`);
 
     if (!stored || stored !== otp) {
@@ -403,10 +469,10 @@ export class AuthService {
     await this.userRepository.save(user);
     await this.cacheService.del(`otp:reset:${mobile}`);
 
-    return this.generateTokenPair(user);
+    return this.generateTokenPair(user, context);
   }
 
-  private async generateTokenPair(user: User) {
+  private async generateTokenPair(user: User, context?: RequestContext) {
     const payload: JwtPayload = {
       sub: String(user.id),
       role: user.role,
@@ -419,10 +485,19 @@ export class AuthService {
     const refreshToken = uuidv4();
     const userId = String(user.id);
     const sessionsKey = `sessions:${userId}`;
+    const now = Date.now();
+
+    const metadata: SessionMetadata = {
+      userId,
+      ip: context?.ip ?? 'unknown',
+      userAgent: context?.userAgent ?? 'unknown',
+      createdAt: now,
+      lastUsedAt: now,
+    };
 
     await this.cacheService.set(
       `refresh:${refreshToken}`,
-      { userId },
+      metadata,
       this.REFRESH_TOKEN_TTL,
     );
 
