@@ -7,10 +7,14 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { Request } from 'express';
 import { CacheService } from 'utils/cache/cache.service';
 import { IS_PUBLIC_KEY } from 'utils/decorators/public.decorator';
 import { JwtPayload } from 'utils/interfaces/jwt-payload.interface';
+import { isAdminPath } from 'utils/admin/is-admin-path';
+import { User } from 'src/modules/users/entities/user.entity';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -19,11 +23,13 @@ export class AuthGuard implements CanActivate {
     private readonly cacheService: CacheService,
     private readonly configService: ConfigService,
     private readonly reflector: Reflector,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request>();
-    if (request.path.startsWith('/admin')) return true;
+    if (isAdminPath(request.path)) return true;
     const token = this.extractToken(request);
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
@@ -47,6 +53,14 @@ export class AuthGuard implements CanActivate {
       `blacklist:${token}`,
     );
     if (isBlacklisted) {
+      throw new UnauthorizedException('Token has been revoked');
+    }
+
+    const user = await this.userRepository.findOne({
+      where: { id: parseInt(payload.sub, 10) },
+      select: ['id', 'tokenVersion'],
+    });
+    if (!user || user.tokenVersion !== payload.tokenVersion) {
       throw new UnauthorizedException('Token has been revoked');
     }
 

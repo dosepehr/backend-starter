@@ -22,6 +22,7 @@ import { DataSource } from 'typeorm';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { AuditSubscriber } from 'utils/common/audit/audit.subscriber';
+import { TokenVersionSubscriber } from 'utils/common/audit/token-version.subscriber';
 import { AuthGuard } from 'utils/guards/auth.guard';
 import { RolesGuard } from 'utils/guards/roles.guard';
 import { AuditInterceptor } from 'utils/common/audit/audit.interceptor';
@@ -29,6 +30,7 @@ import { FileModule } from './modules/file/file.module';
 import { QueryModule } from 'utils/common/query/query.module';
 import { AppThrottlerGuard } from 'utils/guards/throttler.guard';
 import { AdminModule } from 'utils/admin/admin.module';
+import { User } from './modules/users/entities/user.entity';
 
 @Module({
   imports: [
@@ -41,6 +43,7 @@ import { AdminModule } from 'utils/admin/admin.module';
     LoggerModule,
     ThrottlerModule.forRoot(throttlerConfig),
     TypeOrmModule.forRootAsync(dbConfig),
+    TypeOrmModule.forFeature([User]),
     HealthModule,
     CacheModule,
     QueryModule,
@@ -51,6 +54,7 @@ import { AdminModule } from 'utils/admin/admin.module';
   ],
   providers: [
     AuditSubscriber,
+    TokenVersionSubscriber,
     {
       provide: APP_GUARD,
       useClass: AppThrottlerGuard,

@@ -33,4 +33,11 @@ export class User extends GlobalEntity {
     default: 'USER',
   })
   role: UserRole;
+
+  // Bumped whenever role/privileges change so existing access tokens
+  // (which carry the old value) fail verification instantly instead of
+  // waiting out their TTL.
+  @Exclude()
+  @Column({ default: 0 })
+  tokenVersion: number;
 }
