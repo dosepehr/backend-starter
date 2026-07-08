@@ -8,6 +8,7 @@ import { Reflector } from '@nestjs/core';
 import { ROLES_KEY } from '../decorators/roles.decorator';
 import { AuthenticatedUser } from 'utils/interfaces/jwt-payload.interface';
 import { UserRole } from 'src/modules/users/enums/user-role.enum';
+import { isAdminPath } from 'utils/admin/is-admin-path';
 
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -15,7 +16,7 @@ export class RolesGuard implements CanActivate {
 
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest<{ path: string }>();
-    if (request.path.startsWith('/admin')) return true;
+    if (isAdminPath(request.path)) return true;
 
     const requiredRoles = this.reflector.getAllAndOverride<UserRole[]>(
       ROLES_KEY,

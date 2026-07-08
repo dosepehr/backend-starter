@@ -8,6 +8,7 @@ import { UserResource } from './resources/user.resource';
 import { FileResource } from './resources/file.resource';
 import { User } from 'src/modules/users/entities/user.entity';
 import { UserRole } from 'src/modules/users/enums/user-role.enum';
+import { ADMIN_ROOT_PATH } from './admin.constants';
 
 const adminSetup = Promise.all([
   import('@adminjs/nestjs'),
@@ -33,7 +34,7 @@ const adminSetup = Promise.all([
 
           return {
             adminJsOptions: {
-              rootPath: '/admin',
+              rootPath: ADMIN_ROOT_PATH,
               resources: [UserResource, FileResource],
               branding: {
                 companyName: 'Nest Starter',
