@@ -12,10 +12,12 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { type Request } from 'express';
-import { AuthService, type RequestContext } from './auth.service';
+import { AuthService } from './auth.service';
+import { type RequestContext } from './session.service';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { CurrentUser } from 'utils/decorators/current-user.decorator';
+import { CurrentAccessToken } from 'utils/decorators/current-access-token.decorator';
 import { type AuthenticatedUser } from 'utils/interfaces/jwt-payload.interface';
 import { DocsResponse } from 'utils/decorators/docs-response.decorator';
 import { DocsErrors } from 'utils/decorators/docs-errors.decorator';
@@ -121,8 +123,7 @@ export class AuthController {
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   @DocsResponse('Logged out successfully')
-  logout(@Req() req: Request, @Body() dto: RefreshTokenDto) {
-    const accessToken = req.headers.authorization!.split(' ')[1];
+  logout(@CurrentAccessToken() accessToken: string, @Body() dto: RefreshTokenDto) {
     return this.authService.logout(accessToken, dto.refreshToken);
   }
 
