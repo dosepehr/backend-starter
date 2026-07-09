@@ -6,9 +6,36 @@ import {
   HttpStatus,
   ServiceUnavailableException,
 } from '@nestjs/common';
+import { QueryFailedError } from 'typeorm';
 import { Request, Response } from 'express';
 import { ErrorResponse } from 'utils/interfaces/api-responses.interface';
 import { AppLogger } from 'utils/common/logger/logger.service';
+
+interface MysqlDriverError {
+  code?: string;
+  sqlMessage?: string;
+}
+
+// Maps common MySQL driver error codes to a clean HTTP status + message,
+// so a raw QueryFailedError never leaks driver internals as a bare 500.
+const MYSQL_ERROR_MAP: Record<string, { status: HttpStatus; message: string }> = {
+  ER_DUP_ENTRY: {
+    status: HttpStatus.CONFLICT,
+    message: 'Resource already exists',
+  },
+  ER_ROW_IS_REFERENCED_2: {
+    status: HttpStatus.CONFLICT,
+    message: 'Resource is referenced by other records',
+  },
+  ER_NO_REFERENCED_ROW_2: {
+    status: HttpStatus.BAD_REQUEST,
+    message: 'Referenced resource does not exist',
+  },
+  ER_DATA_TOO_LONG: {
+    status: HttpStatus.BAD_REQUEST,
+    message: 'One or more fields exceed the allowed length',
+  },
+};
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
@@ -61,6 +88,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
           message = typeof resp.message === 'string' ? resp.message : message;
         }
       }
+    } else if (exception instanceof QueryFailedError) {
+      const mapped = this.mapDatabaseError(exception);
+      status = mapped.status;
+      message = mapped.message;
     } else if (exception instanceof Error) {
       message = exception.message;
     }
@@ -84,6 +115,20 @@ export class HttpExceptionFilter implements ExceptionFilter {
     };
 
     response.status(status).json(errorResponse);
+  }
+
+  private mapDatabaseError(
+    exception: QueryFailedError,
+  ): { status: HttpStatus; message: string } {
+    const driverError = exception.driverError as MysqlDriverError | undefined;
+    const mapped = driverError?.code ? MYSQL_ERROR_MAP[driverError.code] : undefined;
+
+    return (
+      mapped ?? {
+        status: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Internal server error',
+      }
+    );
   }
 
   private isHealthCheckError(exception: unknown): boolean {
